@@ -1322,6 +1322,11 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   </div>
 </div>
 
+<button class="slip-btn" onclick="setChartPeriod(this, 'minute', 1)">1M</button>
+<button class="slip-btn active" onclick="setChartPeriod(this, 'minute', 5)">5M</button>
+<button class="slip-btn" onclick="setChartPeriod(this, 'hour', 1)">1H</button>
+<button class="slip-btn" onclick="setChartPeriod(this, 'day', 1)">1D</button>
+
 <!-- ==================== MODALS ==================== -->
 
 <!-- WALLET MODAL -->
@@ -1738,14 +1743,15 @@ window.showPage = function(pageId) {
 };
 
 // Navigate to specific token page and update the header
-window.viewToken = function(name, ticker, change) {
+window.viewToken = function(name, ticker, change, pairAddress) {
   const safeName = name || ticker || "Unknown";
   const safeTicker = ticker || "TOKEN";
   const safeChange = change !== undefined && change !== 'undefined' ? parseFloat(change) : (Math.random() * 50 - 10);
 
+  // 🔥 Save the pair address globally (Fallback to an active pool if missing so the chart doesn't crash)
+  window.currentPairAddress = pairAddress || "8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump"; 
+
   const nameEl = document.querySelector('.token-header-name');
-  const symEl = document.querySelector('.token-header-sym');
-  const changeEl = document.getElementById('token-change');
 
   if (nameEl) nameEl.textContent = safeName;
   if (symEl) symEl.textContent = safeTicker + '/SOL';
@@ -1851,12 +1857,13 @@ window.setTokenTab = function(index, el) {
 };
 
 // 3. Chart Timeframe Buttons
-window.setChartPeriod = function(el) {
+window.setChartPeriod = function(el, timeframe, aggregate) {
   document.querySelectorAll('.chart-header .slip-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
-  window.showToast(`Chart timeframe updated to ${el.innerText}`, 'info');
-  // Visual chart update simulation
-  window.initChart(); 
+  window.currentChartTimeframe = timeframe;
+  window.currentChartAggregate = aggregate;
+  window.showToast(`Loading ${aggregate}${timeframe.charAt(0).toUpperCase()} candles...`, 'info');
+  window.initChart(); // Re-fetch and redraw
 };
 
 // 4. Token-Specific Chat & Reactions
@@ -2021,21 +2028,22 @@ window.fetchTerminalData = async function() {
         ticker: memeToken.symbol || "???",
         mcap: formatNum(p.fdv),
         vol24h: formatNum(p.volume?.h24),
-        vol1hNum: p.volume?.h1 || 0,        // Used for HOT sorting
-        change1h: p.priceChange?.h1 || 0,   // Used for TOP sorting
-        ageMins: diffMins,                  // Used for NEW sorting
-        liquidity: p.liquidity?.usd || 0,   // Used for Anti-Scam filter
+        vol1hNum: p.volume?.h1 || 0,        
+        change1h: p.priceChange?.h1 || 0,   
+        ageMins: diffMins,                  
+        liquidity: p.liquidity?.usd || 0,   
         age: ageStr,
         address: memeToken.address,
+        pairAddress: p.pairAddress, // 🔥 The actual liquidity pool address is safely captured here
         image: tokenProfile?.icon || p.info?.imageUrl || null 
       });
-    });
+    }); // 🔥 Added the missing closing bracket for the forEach loop here!
 
     // Silently update the global cache so the UI can render it
     window.terminalCache = parsedTokens;
-
+    
   } catch (err) {
-    console.error("Live Feed Sync Error:", err); // Fails silently to not disrupt the UI loop
+    console.error("Live Feed Sync Error:", err); 
   }
 };
 
@@ -2073,8 +2081,9 @@ window.renderTerminalCards = function() {
       ? `<img src="${t.image}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` 
       : `<span style="font-size:16px; font-weight:800; color:var(--text2);">${t.ticker.charAt(0)}</span>`;
 
+    // 🔥 UPDATED ONCLICK BELOW: It now passes '${t.pairAddress}' as the 4th argument
     html += `
-      <div class="token-card" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" onclick="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}')">
+      <div class="token-card" style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" onclick="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}', '${t.pairAddress}')">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <div style="position: relative;">
@@ -2156,96 +2165,69 @@ window.updateReview = () => {
 // Sub-components rendering (Chat, Portfolio, Trenches)
 function renderStaticComponents() {
   // 1. Chart Initializer
-  window.initChart = function() {
+  window.initChart = async function() {
     const container = document.getElementById('priceChartContainer');
-    if (!container) {
-      console.error("[Chart] Container not found in DOM.");
-      return;
-    }
+    if (!container || typeof LightweightCharts === 'undefined') return;
 
-    // 1. Safety Check: Did the script actually load?
-    if (typeof LightweightCharts === 'undefined') {
-      console.error("[Chart] LightweightCharts library is missing! Check your <script> tag.");
-      return;
-    }
-
-    // Clean up previous chart instance if it exists
-    if (container.chartInstance) {
-      container.chartInstance.remove();
-    }
+    if (container.chartInstance) container.chartInstance.remove();
     container.innerHTML = '';
     
-    // 2. The 0x0 Fix: Force dimensions if the browser is lagging on the CSS paint
     const rect = container.getBoundingClientRect();
-    const chartWidth = rect.width || container.clientWidth || 800; // Fallback to 800px
-    const chartHeight = rect.height || container.clientHeight || 300; // Fallback to 300px
+    const chartWidth = rect.width || container.clientWidth || 800; 
+    const chartHeight = rect.height || container.clientHeight || 300; 
 
-    console.log(`[Chart] Booting up canvas at ${chartWidth}x${chartHeight}...`);
-
-    // Initialize TradingView Lightweight Chart
     const chart = LightweightCharts.createChart(container, {
       width: chartWidth,
       height: chartHeight,
-      layout: { 
-        background: { type: 'solid', color: 'transparent' }, 
-        textColor: '#94a3b8' 
-      },
-      grid: { 
-        vertLines: { color: 'rgba(255,255,255,0.05)' }, 
-        horzLines: { color: 'rgba(255,255,255,0.05)' } 
-      },
+      layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
+      grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
       crosshair: { mode: 0 },
-      timeScale: { 
-        timeVisible: true, 
-        secondsVisible: true 
-      }
+      timeScale: { timeVisible: true, secondsVisible: true }
     });
     container.chartInstance = chart;
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor: '#10b981', 
-      downColor: '#ef4444', 
-      borderVisible: false,
-      wickUpColor: '#10b981', 
-      wickDownColor: '#ef4444'
+      upColor: '#10b981', downColor: '#ef4444', borderVisible: false,
+      wickUpColor: '#10b981', wickDownColor: '#ef4444'
     });
 
-    // Generate simulated dynamic candlestick data
-    const data = [];
-    let time = Math.floor(Date.now() / 1000) - (100 * 300); // 100 5-min candles
-    let currentPrice = 0.0000500;
-    
-    for(let i=0; i<100; i++) {
-      const open = currentPrice;
-      const close = open + (Math.random() - 0.48) * (open * 0.1);
-      const high = Math.max(open, close) + Math.random() * (open * 0.05);
-      const low = Math.min(open, close) - Math.random() * (open * 0.05);
-      data.push({ time, open, high, low, close });
-      currentPrice = close;
-      time += 300; 
-    }
-    candleSeries.setData(data);
-
-    // Indicator Envelope Visualizer
     const upperEnvelope = chart.addLineSeries({ color: 'rgba(124,58,237,0.5)', lineWidth: 1, crosshairMarkerVisible: false });
     const lowerEnvelope = chart.addLineSeries({ color: 'rgba(6,182,212,0.5)', lineWidth: 1, crosshairMarkerVisible: false });
-    
-    const upperData = data.map(d => ({ time: d.time, value: d.high + (d.open * 0.15) }));
-    const lowerData = data.map(d => ({ time: d.time, value: d.low - (d.open * 0.15) }));
-    
-    upperEnvelope.setData(upperData);
-    lowerEnvelope.setData(lowerData);
 
-    // Make chart responsive to window resizing
+    // 🔥 FETCH REAL DATA FROM GECKOTERMINAL
+    try {
+      const timeFrame = window.currentChartTimeframe || 'minute';
+      const aggregate = window.currentChartAggregate || 5; // Default to 5m candles
+      
+      const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/ohlcv/${timeFrame}?aggregate=${aggregate}&limit=100`;
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      if(data?.data?.attributes?.ohlcv_list) {
+         // Gecko returns: [timestamp, open, high, low, close, volume] (Newest first)
+         // TradingView needs: Oldest first
+         const formattedData = data.data.attributes.ohlcv_list.reverse().map(item => ({
+             time: item[0], open: item[1], high: item[2], low: item[3], close: item[4]
+         }));
+         
+         candleSeries.setData(formattedData);
+         
+         // Dynamically wrap the real data in our Lorentzian/N-W envelopes
+         const upperData = formattedData.map(d => ({ time: d.time, value: d.high + (d.open * 0.05) }));
+         const lowerData = formattedData.map(d => ({ time: d.time, value: d.low - (d.open * 0.05) }));
+         upperEnvelope.setData(upperData);
+         lowerEnvelope.setData(lowerData);
+      }
+    } catch (e) {
+      console.error("[Chart] Failed to fetch real OHLCV data", e);
+    }
+
     new ResizeObserver(entries => {
       if (entries.length === 0 || entries[0].target !== container) return;
-      chart.applyOptions({ 
-        width: entries[0].contentRect.width, 
-        height: entries[0].contentRect.height 
-      });
+      chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
     }).observe(container);
     
-    // Fit content beautifully
     chart.timeScale().fitContent();
   };
 
