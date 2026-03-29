@@ -873,12 +873,14 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
         <!-- TABS -->
         <div class="tabs" id="token-tabs">
-          <div class="tab active" onclick="setTokenTab(0,this)">Overview</div>
+          <div class="tab" onclick="setTokenTab(0,this)">Overview</div>
           <div class="tab" onclick="setTokenTab(1,this)">Trades</div>
           <div class="tab" onclick="setTokenTab(2,this)">Holders</div>
           <div class="tab" onclick="setTokenTab(3,this)">Contract</div>
-          <div class="tab" onclick="setTokenTab(4,this)">Chat</div>
+          <div class="tab active" onclick="setTokenTab(4,this)">Chat</div>
         </div>
+
+        <div id="tab-0" style="display:none">
 
         <!-- OVERVIEW TAB -->
         <div id="tab-0">
@@ -2342,7 +2344,7 @@ window.updateReview = () => {
 // Sub-components rendering (Chat, Portfolio, Trenches)
 function renderStaticComponents() {
   
-  // 🔥 THE MICRO-CAP FORMATTER (Prevents 1e-7 scientific notation)
+  // 🔥 THE MICRO-CAP FORMATTER
 window.formatMicroPrice = function(price) {
     if (!price || price === 0) return "$0.00";
     if (price < 0.000001) return "$" + price.toFixed(10); 
@@ -2364,55 +2366,32 @@ window.initChart = async function() {
   const chartHeight = rect.height || container.clientHeight || 300; 
 
   const chart = LightweightCharts.createChart(container, {
-      width: chartWidth,
-      height: chartHeight,
-      layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
-      grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
-      crosshair: { mode: 0 },
-      
-      // 🔥 EXPLICITLY UNLOCK ALL MOUSE & TOUCH CONTROLS
-      handleScroll: {
-        mouseWheel: true,
-        pressedMouseMove: true,
-        horzTouchDrag: true,
-        vertTouchDrag: true,
-      },
-      handleScale: {
-        axisPressedMouseMove: true,
-        mouseWheel: true,
-        pinch: true,
-      },
-      timeScale: { 
-        timeVisible: true, 
-        secondsVisible: true,
-        rightOffset: 15, // Adds breathing room on the right side
-        shiftVisibleRangeOnNewBar: true // Auto-scrolls with the live timeline
-      }
-    });
+    width: chartWidth,
+    height: chartHeight,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    crosshair: { mode: 0 },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+    timeScale: { timeVisible: true, secondsVisible: true, rightOffset: 15, shiftVisibleRangeOnNewBar: true }
+  });
   container.chartInstance = chart;
 
-  // 🔥 NATIVE HIGH-PRECISION FORMATTER FOR THE Y-AXIS
   const candleSeries = chart.addCandlestickSeries({
     upColor: '#10b981', downColor: '#ef4444', borderVisible: false,
     wickUpColor: '#10b981', wickDownColor: '#ef4444',
-    priceFormat: {
-        type: 'price',
-        precision: 8,
-        minMove: 0.00000001 
-    }
+    priceFormat: { type: 'price', precision: 8, minMove: 0.00000001 }
   });
 
   const upperEnvelope = chart.addLineSeries({ 
     color: 'rgba(124,58,237,0.5)', lineWidth: 1, crosshairMarkerVisible: false,
     priceFormat: { type: 'price', precision: 8, minMove: 0.00000001 }
   });
-  
   const lowerEnvelope = chart.addLineSeries({ 
     color: 'rgba(6,182,212,0.5)', lineWidth: 1, crosshairMarkerVisible: false,
     priceFormat: { type: 'price', precision: 8, minMove: 0.00000001 }
   });
 
-  // Helper to sync both UI headers instantly
   const updateHeaders = (price) => {
       const displayStr = window.formatMicroPrice(price);
       const headerPrice = document.getElementById('token-price');
@@ -2421,39 +2400,48 @@ window.initChart = async function() {
       if (chartPrice) chartPrice.textContent = displayStr;
   };
 
-  const runSimulation = () => {
-    console.warn(`[Chart] Coin too new. Simulating baseline from: $${window.currentTokenPrice}`);
-    const data = [];
-    let time = Math.floor(Date.now() / 1000) - (100 * 60); 
-    let currentPrice = window.currentTokenPrice || 0.00005; 
+  // 🔥 THE NO-SIMULATION BLANK SLATE BUILDER
+  const initBlankSlate = () => {
+    console.warn(`[Chart] Coin too new for historical data. Initializing live-build mode at $${window.currentTokenPrice}.`);
     
-    for(let i=0; i<100; i++) {
-      const open = currentPrice;
-      const close = open + (Math.random() - 0.48) * (open * 0.1);
-      const high = Math.max(open, close) + Math.random() * (open * 0.05);
-      const low = Math.min(open, close) - Math.random() * (open * 0.05);
-      data.push({ time, open, high, low, close });
-      currentPrice = close;
-      time += 60; 
-    }
-    candleSeries.setData(data);
+    const now = Math.floor(Date.now() / 1000);
+    const aggregateSeconds = (window.currentChartAggregate || 1) * 60; 
+    const currentBucket = Math.floor(now / aggregateSeconds) * aggregateSeconds;
+    
+    const realPrice = window.currentTokenPrice || 0.00005; 
+    
+    // Seed exactly ONE real data point based on the DexScreener cache
+    const initialCandle = {
+        time: currentBucket,
+        open: realPrice,
+        high: realPrice,
+        low: realPrice,
+        close: realPrice
+    };
+    
+    candleSeries.setData([initialCandle]);
     window.globalCandleSeries = candleSeries;
-    window.currentLiveCandle = data[data.length - 1];
+    window.currentLiveCandle = initialCandle;
     
-    upperEnvelope.setData(data.map(d => ({ time: d.time, value: d.high + (d.open * 0.15) })));
-    lowerEnvelope.setData(data.map(d => ({ time: d.time, value: d.low - (d.open * 0.15) })));
+    // Set envelopes tightly around the single real price point
+    upperEnvelope.setData([{ time: currentBucket, value: realPrice * 1.02 }]);
+    lowerEnvelope.setData([{ time: currentBucket, value: realPrice * 0.98 }]);
     
-    updateHeaders(window.currentTokenPrice || 0.00005);
+    updateHeaders(realPrice);
   };
 
   try {
     const timeFrame = window.currentChartTimeframe || 'minute';
     const aggregate = window.currentChartAggregate || 1; 
+    console.log(`[Chart-API] Fetching ${aggregate}${timeFrame.charAt(0).toUpperCase()} candles...`);
     
     const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/ohlcv/${timeFrame}?aggregate=${aggregate}&limit=100`;
     
     const res = await fetch(url);
-    if(!res.ok) return runSimulation();
+    if(!res.ok) {
+        console.error(`[Chart-API] No historical data found. Booting Blank Slate WSS Builder.`);
+        return initBlankSlate();
+    }
     
     const data = await res.json();
     if(data?.data?.attributes?.ohlcv_list && data.data.attributes.ohlcv_list.length > 0) {
@@ -2465,7 +2453,6 @@ window.initChart = async function() {
        window.globalCandleSeries = candleSeries;
        window.currentLiveCandle = formattedData[formattedData.length - 1];
 
-       // Uses the new synced updater!
        updateHeaders(data.data.attributes.ohlcv_list[data.data.attributes.ohlcv_list.length - 1][4]);
 
        const upperData = formattedData.map(d => ({ time: d.time, value: d.high + (d.open * 0.05) }));
@@ -2473,11 +2460,11 @@ window.initChart = async function() {
        upperEnvelope.setData(upperData);
        lowerEnvelope.setData(lowerData);
     } else {
-       runSimulation();
+       initBlankSlate();
     }
   } catch (e) {
     console.error("[Chart] Network error.", e);
-    runSimulation();
+    initBlankSlate();
   }
 
   new ResizeObserver(entries => {
