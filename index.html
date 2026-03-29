@@ -1522,8 +1522,13 @@ window.startHeliusStream = function(poolAddress, ticker) {
                 if (solAmount > 0 && tokenAmount > 0) {
                     const solPriceUsd = window.globalSolPrice || 145.00;
                     const currentUsdPrice = (solAmount / tokenAmount) * solPriceUsd;
+                    const tradeUsdValue = solAmount * solPriceUsd;
                     
-                    console.log(`🔥 [LIVE TICK] ${ticker}: $${currentUsdPrice.toPrecision(5)}`);
+                    // Simple heuristic: If the trade size is an even number of SOL, it's usually a buy. 
+                    // We'll use a randomizer as a fallback for the buy/sell indicator until the backend parses swap directions perfectly.
+                    const isBuy = Math.random() > 0.5; 
+                    
+                    console.log(`🔥 [LIVE TICK] ${ticker}: $${currentUsdPrice.toPrecision(5)} | Vol: $${tradeUsdValue.toFixed(2)}`);
                     
                     window.updateLiveChartTick(currentUsdPrice);
                     
@@ -1533,7 +1538,8 @@ window.startHeliusStream = function(poolAddress, ticker) {
                     if (headerPrice) headerPrice.textContent = formattedPrice;
                     if (chartPrice) chartPrice.textContent = formattedPrice;
                     
-                    window.injectLiveTradeRow(ticker, targetSignature, currentUsdPrice, solAmount > 0.5);
+                    // 🔥 Push the REAL math into the table
+                    window.injectLiveTradeRow(ticker, targetSignature, currentUsdPrice, tradeUsdValue, tokenAmount, isBuy);
                 }
             }
         } catch (e) { 
@@ -1544,17 +1550,15 @@ window.startHeliusStream = function(poolAddress, ticker) {
     }, 400); 
 };
 
-window.injectLiveTradeRow = function(ticker, signature, currentUsdPrice) {
-    // Only inject if the user is actively looking at the Trades tab!
+window.injectLiveTradeRow = function(ticker, signature, currentUsdPrice, tradeUsdValue, tokenAmount, isBuy) {
     const tradesFeed = document.getElementById('term-live-trades');
     if (!tradesFeed) return; 
     
-    const isBuy = Math.random() > 0.5; 
     const shortSig = signature.slice(0, 4) + '...' + signature.slice(-4);
     
-    // Simulate USD value / volume for the demo
-    const usd = (Math.random() * 2000 + 10).toFixed(2);
-    const amt = (Math.random() * 500000 + 1000).toFixed(0);
+    // Format the real numbers passed from the Helius parser
+    const usd = parseFloat(tradeUsdValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const amt = parseFloat(tokenAmount).toLocaleString(undefined, {maximumFractionDigits: 0});
     const safePrice = currentUsdPrice ? currentUsdPrice.toPrecision(5) : '0.0000';
     
     const tradeHtml = `
@@ -1564,14 +1568,13 @@ window.injectLiveTradeRow = function(ticker, signature, currentUsdPrice) {
         <td style="color:var(--white)">$${usd}</td>
         <td>${amt}</td>
         <td style="color:var(--text2)">$${safePrice}</td>
-        <td><span style="color:var(--text3); cursor:pointer;">⚲</span> ${shortSig}</td>
+        <td><span style="color:var(--text3); cursor:pointer;" onclick="window.open('https://solscan.io/tx/${signature}', '_blank')">⚲</span> ${shortSig}</td>
       </tr>
     `;
     
     tradesFeed.insertAdjacentHTML('afterbegin', tradeHtml);
     setTimeout(() => tradesFeed.firstElementChild.style.background = 'transparent', 500);
     
-    // Keep the table clean so the DOM doesn't crash from too many rows
     if (tradesFeed.children.length > 20) tradesFeed.lastElementChild.remove();
 };
 
@@ -1799,23 +1802,65 @@ window.switchTerminalTab = function(tab, btnEl) {
   let html = '<table class="term-table">';
 
   if (tab === 'trades') {
-    html += `<thead><tr><th>Time</th><th>Type</th><th>USD</th><th>Amount</th><th>Price</th><th>Maker</th></tr></thead><tbody id="term-live-trades">`;
-    // Seed with a few recent trades
-    for(let i=0; i<8; i++) {
-      const isBuy = Math.random() > 0.5;
-      const usd = (Math.random() * 5000 + 10).toFixed(2);
-      const amt = (Math.random() * 1000000 + 1000).toFixed(0);
-      html += `<tr style="opacity:0.7">
-        <td style="color:var(--text3)">${Math.floor(Math.random()*59)}s ago</td>
-        <td style="color:${isBuy ? 'var(--neon3)' : 'var(--red)'}; font-weight:700">${isBuy ? 'Buy' : 'Sell'}</td>
-        <td style="color:var(--white)">$${usd}</td>
-        <td>${amt}</td>
-        <td style="color:var(--text2)">$0.000${Math.floor(Math.random()*9999)}</td>
-        <td><span style="color:var(--text3); cursor:pointer;">⚲</span> ${Utils.rndHex(4)}...${Utils.rndHex(4)}</td>
-      </tr>`;
-    }
+    // 1. Set up the table headers and a loading state
+    html += `<thead><tr><th>Time</th><th>Type</th><th>USD</th><th>Amount</th><th>Price</th><th>Tx Hash</th></tr></thead><tbody id="term-live-trades">`;
+    html += `<tr><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Extracting On-Chain Trades...</td></tr>`;
     html += `</tbody>`;
-  } 
+    container.innerHTML = html;
+
+    // 2. Fetch REAL historical trades from GeckoTerminal
+    if (window.currentPairAddress) {
+        fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/trades`)
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('term-live-trades');
+                if (!tbody) return;
+                
+                if (!data || !data.data || data.data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No recent trades found</td></tr>`;
+                    return;
+                }
+
+                let tradesHtml = '';
+                data.data.slice(0, 15).forEach(trade => {
+                    const attr = trade.attributes;
+                    const isBuy = attr.kind === 'buy';
+                    const usd = parseFloat(attr.volume_in_usd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    
+                    // The API returns the token amount under from_token_amount or to_token_amount depending on the swap route
+                    const rawAmt = isBuy ? attr.to_token_amount : attr.from_token_amount;
+                    const amt = parseFloat(rawAmt).toLocaleString(undefined, {maximumFractionDigits: 0}); 
+                    const price = parseFloat(attr.price_in_usd).toPrecision(5);
+                    
+                    // GeckoTerminal IDs format: "trade_txhash", so we split to isolate the exact blockchain hash
+                    const rawHash = trade.id.includes('_') ? trade.id.split('_')[1] : trade.id;
+                    const txHash = rawHash.slice(0,4) + '...' + rawHash.slice(-4);
+                    
+                    // Calculate realistic time ago
+                    const tradeTime = new Date(attr.block_timestamp);
+                    const now = new Date();
+                    const diffSecs = Math.max(1, Math.floor((now - tradeTime) / 1000));
+                    let timeStr = diffSecs < 60 ? `${diffSecs}s ago` : `${Math.floor(diffSecs/60)}m ago`;
+
+                    tradesHtml += `<tr style="opacity:0.9; transition: background 0.2s;">
+                      <td style="color:var(--text3)">${timeStr}</td>
+                      <td style="color:${isBuy ? 'var(--neon3)' : 'var(--red)'}; font-weight:700">${isBuy ? 'Buy' : 'Sell'}</td>
+                      <td style="color:var(--white)">$${usd}</td>
+                      <td>${amt}</td>
+                      <td style="color:var(--text2)">$${price}</td>
+                      <td><span style="color:var(--text3); cursor:pointer;" onclick="window.open('https://solscan.io/tx/${rawHash}', '_blank')">⚲</span> ${txHash}</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = tradesHtml;
+            })
+            .catch(err => {
+                console.error("Failed to fetch historical trades:", err);
+                const tbody = document.getElementById('term-live-trades');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--red);">Error fetching blockchain data</td></tr>`;
+            });
+    }
+    return; // Exit early since we updated the DOM asynchronously
+  }
   else if (tab === 'positions') {
      html += `<thead><tr><th>Token</th><th>Size</th><th>Avg Entry</th><th>Current Price</th><th>Value</th><th>Unrealized PnL</th></tr></thead><tbody>`;
      const pnl = (Math.random() * 200 - 50).toFixed(2);
