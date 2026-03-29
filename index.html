@@ -1656,7 +1656,7 @@ window.startHeliusStream = function(poolAddress, ticker) {
 // ============================================================
 window.defaultHotkeys = {
   'buy_0_1': '1', 'buy_0_5': '2', 'buy_1_0': '3', 'buy_50_pct': '4',
-  'sell_25_pct': 'q', 'sell_50_pct': 'w', 'sell_100_pct': 'e', 'sell_initial': 'r'
+  'sell_25_pct': 'Q', 'sell_50_pct': 'W', 'sell_100_pct': 'E', 'sell_initial': 'R'
 };
 
 window.userHotkeys = JSON.parse(localStorage.getItem('pumpLab_hotkeys')) || { ...window.defaultHotkeys };
@@ -1687,9 +1687,31 @@ window.resetHotkeys = function() {
   window.showToast("Hotkeys reset to default layout", "success");
 };
 
+// Helper to stitch modifiers and keys into a clean string (e.g., "Shift+1" or "Ctrl+B")
+window.getHotkeyString = function(e) {
+  // Prevent modifier keys alone from triggering an assignment
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return null;
+
+  let keys = [];
+  if (e.ctrlKey) keys.push('Ctrl');
+  if (e.altKey) keys.push('Alt');
+  if (e.shiftKey) keys.push('Shift');
+  if (e.metaKey) keys.push('Cmd');
+
+  // Use e.code to bypass shifted characters (e.g., gets "1" instead of "!")
+  let keyName = e.code; 
+  if (keyName.startsWith('Key')) keyName = keyName.slice(3); // "KeyB" -> "B"
+  else if (keyName.startsWith('Digit')) keyName = keyName.slice(5); // "Digit1" -> "1"
+  else if (keyName === 'Space') keyName = 'Space';
+  else keyName = e.key.toUpperCase(); // Fallback for special chars
+
+  keys.push(keyName);
+  return keys.join('+');
+};
+
 // Global Keyboard Listener
 document.addEventListener('keydown', (e) => {
-  // 1. Are we currently assigning a new hotkey in the modal?
+  // 1. Are we assigning a new hotkey?
   if (window.activeHotkeyAssign) {
     e.preventDefault();
     const action = window.activeHotkeyAssign;
@@ -1697,7 +1719,9 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       window.userHotkeys[action] = null; // Unbind
     } else {
-      window.userHotkeys[action] = e.key.toLowerCase(); // Bind new key
+      const combo = window.getHotkeyString(e);
+      if (!combo) return; // Wait for them to press a non-modifier key
+      window.userHotkeys[action] = combo; 
     }
     
     localStorage.setItem('pumpLab_hotkeys', JSON.stringify(window.userHotkeys));
@@ -1710,16 +1734,17 @@ document.addEventListener('keydown', (e) => {
   // 2. Safety Check: Do not execute hotkeys if typing in Chat or Search bars
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-  // 3. Safety Check: Only execute if the user is looking at the Terminal page
+  // 3. Safety Check: Only execute if looking at the Terminal
   const tokenPage = document.getElementById('page-token');
   if (!tokenPage || tokenPage.style.display === 'none') return;
 
   // 4. Execution Logic
-  const keyPress = e.key.toLowerCase();
+  const combo = window.getHotkeyString(e);
+  if (!combo) return;
+
   let triggeredAction = null;
-  
   for (const [action, mappedKey] of Object.entries(window.userHotkeys)) {
-    if (mappedKey === keyPress) { triggeredAction = action; break; }
+    if (mappedKey === combo) { triggeredAction = action; break; }
   }
 
   if (triggeredAction) {
