@@ -437,6 +437,17 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   </div>
   </nav>
 
+  <div style="display:flex; gap:8px; align-items:center">
+    <div class="search-wrapper">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="global-search" placeholder="Search token or CA..." oninput="handleSearch(this.value)" onblur="setTimeout(()=>document.getElementById('search-res').style.display='none',200)">
+      <div class="search-results" id="search-res"></div>
+    </div>
+    
+    <button class="btn btn-ghost btn-sm" onclick="window.openGlobalChatWidget()">💬 Chat</button>
+    <button class="btn btn-ghost btn-sm" id="wallet-btn" onclick="showModal('walletModal')">🔌 Connect</button>
+  </div>
+  
 <!-- MOBILE NAV -->
 <div class="mobile-nav">
   <div class="mobile-nav-inner">
@@ -920,17 +931,19 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
               </div>
             </div>
 
-            <div id="tab-3"></div>
-
             <div class="card">
               <div class="card-header"><div class="card-title">🛡️ Transparency Report</div></div>
               <div class="risk-item">
-                <div><div class="risk-label">Liquidity Lock</div><div style="font-size:11px;color:var(--text3)">Locked for 6 months</div></div>
-                <div style="text-align:right"><div class="risk-level risk-low">✓ Locked</div></div>
+                <div><div class="risk-label">Liquidity Lock</div><div style="font-size:11px;color:var(--text3)">Locked for 6 months via PumpLab</div></div>
+                <div style="text-align:right"><div class="risk-level risk-low">✓ Locked</div><div style="font-size:10px;color:var(--text3)">5mo 14d left</div></div>
               </div>
               <div class="risk-item">
                 <div><div class="risk-label">Mint/Freeze Authority</div><div style="font-size:11px;color:var(--text3)">Contract mutation risk</div></div>
                 <div class="risk-level risk-low">✓ Revoked</div>
+              </div>
+              <div class="risk-item">
+                <div><div class="risk-label">Top 10 Holders</div><div style="font-size:11px;color:var(--text3)">Concentration risk</div></div>
+                <div class="risk-level risk-med">⚠ 31%</div>
               </div>
             </div>
           </div>
@@ -938,7 +951,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
           <div style="display:flex; flex-direction:column; gap:16px;">
             <div class="card">
               <div class="card-header"><div class="card-title">💬 Token Chat</div><span class="live-dot"></span></div>
-              <div class="chat-container" style="height: 220px;">
+              <div class="chat-container" style="height: 180px;">
                 <div class="chat-messages" id="token-chat-msgs"></div>
                 <div>
                   <div class="emoji-row">
@@ -956,16 +969,13 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
             <div class="card">
                <div class="card-header" style="margin-bottom:8px;"><div class="card-title">⚡ Live Trades</div></div>
-               <div id="trades-feed" style="max-height: 200px; overflow-y: auto;"></div>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><div class="card-title">👥 Top Holders</div></div>
-              <div id="holders-list"></div>
+               <div id="trades-feed" style="max-height: 160px; overflow-y: auto;"></div>
             </div>
           </div>
 
         </div>
+
+      </div>
 
       </div>
 
