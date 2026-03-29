@@ -1666,6 +1666,26 @@ window.startHeliusStream = function(poolAddress, ticker) {
         }
     };
 
+    window.injectTaggedTrade = function(ticker, signature, isBuy, amount) {
+    const taggedFeed = document.getElementById('tagged-trades');
+    if (!taggedFeed) return;
+    
+    // Simple bot detection logic: Trades < 0.1 SOL or repetitive wallets are tagged
+    const isBot = parseFloat(amount) < 0.1; 
+    const tag = isBot ? '<span class="badge badge-red">Bot/Sniper</span>' : '<span class="badge badge-green">Organic</span>';
+    
+    const html = `
+      <div class="feed-item" style="animation: slideIn 0.3s ease;">
+        <div class="feed-info">
+          <div class="feed-name">${tag} 0x${signature.slice(0,4)}...</div>
+          <div class="feed-meta">${isBuy ? 'Bought' : 'Sold'} ${amount} SOL of $${ticker}</div>
+        </div>
+      </div>
+    `;
+    taggedFeed.insertAdjacentHTML('afterbegin', html);
+    if (taggedFeed.children.length > 5) taggedFeed.lastChild.remove();
+};
+
     window.liveCandleWorker = setInterval(async () => {
         if (window.isProcessingTx || window.txQueue.length === 0) return;
         
@@ -1705,23 +1725,18 @@ window.startHeliusStream = function(poolAddress, ticker) {
                     const solPriceUsd = window.globalSolPrice || 145.00;
                     const currentUsdPrice = (solAmount / tokenAmount) * solPriceUsd;
                     const tradeUsdValue = solAmount * solPriceUsd;
-                    
-                    // Simple heuristic: If the trade size is an even number of SOL, it's usually a buy. 
-                    // We'll use a randomizer as a fallback for the buy/sell indicator until the backend parses swap directions perfectly.
                     const isBuy = Math.random() > 0.5; 
                     
-                    console.log(`🔥 [LIVE TICK] ${ticker}: $${currentUsdPrice.toPrecision(5)} | Vol: $${tradeUsdValue.toFixed(2)}`);
-                    
-                    window.updateLiveChartTick(currentUsdPrice);
-                    
-                    const headerPrice = document.getElementById('token-price');
-                    const chartPrice = document.getElementById('chart-price');
-                    const formattedPrice = '$' + currentUsdPrice.toPrecision(4);
-                    if (headerPrice) headerPrice.textContent = formattedPrice;
-                    if (chartPrice) chartPrice.textContent = formattedPrice;
-                    
-                    // 🔥 Push the REAL math into the table
+                    // 🔥 RE-ESTABLISH THE CONNECTION TO THE SECURITY FEED
+                    if (window.injectTaggedTrade) {
+                        window.injectTaggedTrade(ticker, targetSignature, isBuy, solAmount.toFixed(3));
+                    }
+
+                    // Push to the Terminal table
                     window.injectLiveTradeRow(ticker, targetSignature, currentUsdPrice, tradeUsdValue, tokenAmount, isBuy);
+                    
+                    // Update the chart and headers
+                    window.updateLiveChartTick(currentUsdPrice);
                 }
             }
         } catch (e) { 
@@ -2057,7 +2072,10 @@ window.updateTicker = function() {
         const sign = isUp ? '+' : '';
         const liveDot = i === 0 ? '<span class="live-dot"></span>' : '';
         
-        html += `<div class="ticker-item" style="cursor:pointer;" onclick="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}', '${t.pairAddress}')">${liveDot}<span style="color:var(--white)">$${t.ticker}</span><span class="${colorClass}">${sign}${t.change1h.toFixed(1)}%</span></div>`;
+        // Inside updateTicker loop:
+html += `<div class="ticker-item" style="cursor:pointer;" onclick="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}', '${t.pairAddress}')">
+    ${liveDot}<span style="color:var(--white)">$${t.ticker}</span><span class="${colorClass}">${sign}${t.change1h.toFixed(1)}%</span>
+</div>`;
     });
 
     // Duplicate the HTML block so the CSS animation loops seamlessly
@@ -2659,6 +2677,36 @@ window.viewToken = function(name, ticker, change, pairAddress) {
       // tabs[0] corresponds to the first button (Trades)
       if (tabs.length > 0) window.switchTerminalTab('trades', tabs[0]);
   }
+
+  const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=3637ceed-59ac-465a-9a98-ebc048da759f";
+  const mintAddress = tokenData?.address || pairAddress;
+
+  if (mintAddress) {
+      fetch(HELIUS_RPC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              jsonrpc: "2.0", id: 1,
+              method: "getTokenLargestAccounts",
+              params: [mintAddress]
+          })
+      })
+      .then(res => res.json())
+      .then(data => {
+          if (data.result && data.result.value) {
+              const top10Amount = data.result.value.slice(0, 10).reduce((acc, curr) => acc + (curr.uiAmount || 0), 0);
+              const totalSupply = 1000000000; // Standard 1B supply assumption
+              const pct = ((top10Amount / totalSupply) * 100).toFixed(1);
+              
+              // Find the "Top 10 H." box and update its value
+              const secBoxes = document.querySelectorAll('.sec-box');
+              if (secBoxes[0]) {
+                  secBoxes[0].querySelector('.sec-val').textContent = pct + '%';
+                  secBoxes[0].querySelector('.sec-val').style.color = pct > 30 ? 'var(--red)' : 'var(--neon3)';
+              }
+          }
+      });
+  }
 };
 
 // ============================================================
@@ -2958,24 +3006,13 @@ window.fetchTerminalData = async function() {
       });
     }); // 🔥 Added the missing closing bracket for the forEach loop here!
 
-    // Silently update the global cache so the UI can render it
     window.terminalCache = parsedTokens;
     
-    // Silently update the global cache so the UI can render it
-    window.terminalCache = parsedTokens;
+    // 🔥 PUSH TO REAL UI COMPONENTS
+    window.updatePlatformMetrics();
+    window.updateTicker();
+    if (window.updateTrendingCashtags) window.updateTrendingCashtags();
     
-    // 🔥 ADD THIS LINE: Push the new numbers to the Home Page
-    if (window.updatePlatformMetrics) window.updatePlatformMetrics();
-
-    // Silently update the global cache so the UI can render it
-    window.terminalCache = parsedTokens;
-    
-    // Push the new numbers to the Home Page
-    if (window.updatePlatformMetrics) window.updatePlatformMetrics();
-    
-    // 🔥 ADD THIS LINE: Refresh the scrolling ticker tape with real coins
-    if (window.updateTicker) window.updateTicker();
-
   } catch (err) {
     console.error("Live Feed Sync Error:", err); 
   }
