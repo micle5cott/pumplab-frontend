@@ -1355,19 +1355,93 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
       <div class="grid-2" style="gap: 16px;">
         
         <div class="card" style="padding: 14px;">
-          <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:12px;">Fast Buy Execution</div>
-          <div class="hotkey-row"><span>Buy 0.1 SOL</span> <button class="hotkey-btn" data-action="buy_0_1"></button></div>
-          <div class="hotkey-row"><span>Buy 0.5 SOL</span> <button class="hotkey-btn" data-action="buy_0_5"></button></div>
-          <div class="hotkey-row"><span>Buy 1.0 SOL</span> <button class="hotkey-btn" data-action="buy_1_0"></button></div>
-          <div class="hotkey-row"><span>Buy 50% Bal</span> <button class="hotkey-btn" data-action="buy_50_pct"></button></div>
+          <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:12px;">Programmable Buy Keys</div>
+          
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Buy</span>
+              <input type="text" class="input custom-hk-val" data-slot="buy_1" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="buy_1" style="width:65px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="SOL">SOL</option><option value="%">% Bal</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="buy_1"></button>
+          </div>
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Buy</span>
+              <input type="text" class="input custom-hk-val" data-slot="buy_2" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="buy_2" style="width:65px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="SOL">SOL</option><option value="%">% Bal</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="buy_2"></button>
+          </div>
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Buy</span>
+              <input type="text" class="input custom-hk-val" data-slot="buy_3" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="buy_3" style="width:65px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="SOL">SOL</option><option value="%">% Bal</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="buy_3"></button>
+          </div>
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Buy</span>
+              <input type="text" class="input custom-hk-val" data-slot="buy_4" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="buy_4" style="width:65px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="SOL">SOL</option><option value="%">% Bal</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="buy_4"></button>
+          </div>
         </div>
 
         <div class="card" style="padding: 14px;">
-          <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:12px;">Fast Sell Execution</div>
-          <div class="hotkey-row"><span>Sell 25%</span> <button class="hotkey-btn" data-action="sell_25_pct"></button></div>
-          <div class="hotkey-row"><span>Sell 50%</span> <button class="hotkey-btn" data-action="sell_50_pct"></button></div>
-          <div class="hotkey-row"><span>Sell 100%</span> <button class="hotkey-btn" data-action="sell_100_pct"></button></div>
-          <div class="hotkey-row"><span>Sell Initial</span> <button class="hotkey-btn" data-action="sell_initial"></button></div>
+          <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:12px;">Programmable Sell Keys</div>
+          
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Sell</span>
+              <input type="text" class="input custom-hk-val" data-slot="sell_1" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="sell_1" style="width:70px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="%">% Bag</option><option value="Initial">Initial</option><option value="Tokens">Tokens</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="sell_1"></button>
+          </div>
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Sell</span>
+              <input type="text" class="input custom-hk-val" data-slot="sell_2" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="sell_2" style="width:70px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="%">% Bag</option><option value="Initial">Initial</option><option value="Tokens">Tokens</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="sell_2"></button>
+          </div>
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Sell</span>
+              <input type="text" class="input custom-hk-val" data-slot="sell_3" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="sell_3" style="width:70px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="%">% Bag</option><option value="Initial">Initial</option><option value="Tokens">Tokens</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="sell_3"></button>
+          </div>
+          <div class="hotkey-row">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span>Sell</span>
+              <input type="text" class="input custom-hk-val" data-slot="sell_4" style="width:45px; padding:4px; font-size:12px; text-align:center;" onchange="window.saveHotkeyConfigs()">
+              <select class="input custom-hk-unit" data-slot="sell_4" style="width:70px; padding:4px; font-size:12px; cursor:pointer;" onchange="window.saveHotkeyConfigs()">
+                <option value="%">% Bag</option><option value="Initial">Initial</option><option value="Tokens">Tokens</option>
+              </select>
+            </div>
+            <button class="hotkey-btn" data-action="sell_4"></button>
+          </div>
         </div>
 
       </div>
@@ -1652,44 +1726,30 @@ window.startHeliusStream = function(poolAddress, ticker) {
 };
 
 // ============================================================
-// GLOBAL HOTKEY & SETTINGS ENGINE
+// GLOBAL HOTKEY & SETTINGS ENGINE (V2: PROGRAMMABLE CHORDS & VALUES)
 // ============================================================
 window.defaultHotkeys = {
-  'buy_0_1': '1', 'buy_0_5': '2', 'buy_1_0': '3', 'buy_50_pct': '4',
-  'sell_25_pct': 'Q', 'sell_50_pct': 'W', 'sell_100_pct': 'E', 'sell_initial': 'R'
+  'buy_1': '1', 'buy_2': '2', 'buy_3': '3', 'buy_4': '4',
+  'sell_1': 'Q', 'sell_2': 'W', 'sell_3': 'E', 'sell_4': 'R'
+};
+
+window.defaultHotkeyConfigs = {
+  'buy_1': { val: '0.1', unit: 'SOL' },
+  'buy_2': { val: '0.5', unit: 'SOL' },
+  'buy_3': { val: '1.0', unit: 'SOL' },
+  'buy_4': { val: '50', unit: '%' },
+  'sell_1': { val: '25', unit: '%' },
+  'sell_2': { val: '50', unit: '%' },
+  'sell_3': { val: '100', unit: '%' },
+  'sell_4': { val: '', unit: 'Initial' }
 };
 
 window.userHotkeys = JSON.parse(localStorage.getItem('pumpLab_hotkeys')) || { ...window.defaultHotkeys };
+window.userHotkeyConfigs = JSON.parse(localStorage.getItem('pumpLab_hotkey_configs')) || JSON.parse(JSON.stringify(window.defaultHotkeyConfigs));
 window.activeHotkeyAssign = null;
 
-// Renders the saved keys into the modal UI
-window.renderHotkeys = function() {
-  document.querySelectorAll('.hotkey-btn').forEach(btn => {
-    const action = btn.getAttribute('data-action');
-    const key = window.userHotkeys[action];
-    btn.textContent = key ? key : '—';
-    
-    // Assign listener for changing the keybind
-    btn.onclick = function(e) {
-      e.stopPropagation();
-      document.querySelectorAll('.hotkey-btn').forEach(b => b.classList.remove('listening'));
-      btn.classList.add('listening');
-      btn.textContent = '...';
-      window.activeHotkeyAssign = action;
-    };
-  });
-};
-
-window.resetHotkeys = function() {
-  window.userHotkeys = { ...window.defaultHotkeys };
-  localStorage.setItem('pumpLab_hotkeys', JSON.stringify(window.userHotkeys));
-  window.renderHotkeys();
-  window.showToast("Hotkeys reset to default layout", "success");
-};
-
-// Helper to stitch modifiers and keys into a clean string (e.g., "Shift+1" or "Ctrl+B")
+// Helper to stitch modifiers and keys into a clean string (e.g., "Shift+1")
 window.getHotkeyString = function(e) {
-  // Prevent modifier keys alone from triggering an assignment
   if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return null;
 
   let keys = [];
@@ -1698,29 +1758,91 @@ window.getHotkeyString = function(e) {
   if (e.shiftKey) keys.push('Shift');
   if (e.metaKey) keys.push('Cmd');
 
-  // Use e.code to bypass shifted characters (e.g., gets "1" instead of "!")
   let keyName = e.code; 
-  if (keyName.startsWith('Key')) keyName = keyName.slice(3); // "KeyB" -> "B"
-  else if (keyName.startsWith('Digit')) keyName = keyName.slice(5); // "Digit1" -> "1"
+  if (keyName.startsWith('Key')) keyName = keyName.slice(3); 
+  else if (keyName.startsWith('Digit')) keyName = keyName.slice(5); 
   else if (keyName === 'Space') keyName = 'Space';
-  else keyName = e.key.toUpperCase(); // Fallback for special chars
+  else keyName = e.key.toUpperCase();
 
   keys.push(keyName);
   return keys.join('+');
 };
 
+window.renderHotkeys = function() {
+  document.querySelectorAll('.hotkey-btn').forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    const key = window.userHotkeys[action];
+    btn.textContent = key ? key : '—';
+    
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      document.querySelectorAll('.hotkey-btn').forEach(b => b.classList.remove('listening'));
+      btn.classList.add('listening');
+      btn.textContent = '...';
+      window.activeHotkeyAssign = action;
+    };
+  });
+
+  // Load the saved values and units into the input fields
+  document.querySelectorAll('.custom-hk-val').forEach(input => {
+     const slot = input.getAttribute('data-slot');
+     if (window.userHotkeyConfigs[slot]) input.value = window.userHotkeyConfigs[slot].val;
+  });
+  
+  document.querySelectorAll('.custom-hk-unit').forEach(select => {
+     const slot = select.getAttribute('data-slot');
+     if (window.userHotkeyConfigs[slot]) select.value = window.userHotkeyConfigs[slot].unit;
+     
+     // UX Polish: Gray out the number input if "Initial" is selected
+     const valInput = select.parentElement.querySelector('.custom-hk-val');
+     if (valInput) {
+         if (select.value === 'Initial') {
+             valInput.style.opacity = '0.3';
+             valInput.disabled = true;
+         } else {
+             valInput.style.opacity = '1';
+             valInput.disabled = false;
+         }
+     }
+  });
+};
+
+// Saves the input fields whenever the user changes a number or dropdown
+window.saveHotkeyConfigs = function() {
+   document.querySelectorAll('.custom-hk-val').forEach(input => {
+     const slot = input.getAttribute('data-slot');
+     if (!window.userHotkeyConfigs[slot]) window.userHotkeyConfigs[slot] = {};
+     window.userHotkeyConfigs[slot].val = input.value;
+   });
+   document.querySelectorAll('.custom-hk-unit').forEach(select => {
+     const slot = select.getAttribute('data-slot');
+     if (!window.userHotkeyConfigs[slot]) window.userHotkeyConfigs[slot] = {};
+     window.userHotkeyConfigs[slot].unit = select.value;
+   });
+   localStorage.setItem('pumpLab_hotkey_configs', JSON.stringify(window.userHotkeyConfigs));
+   window.renderHotkeys(); 
+};
+
+window.resetHotkeys = function() {
+  window.userHotkeys = { ...window.defaultHotkeys };
+  window.userHotkeyConfigs = JSON.parse(JSON.stringify(window.defaultHotkeyConfigs));
+  localStorage.setItem('pumpLab_hotkeys', JSON.stringify(window.userHotkeys));
+  localStorage.setItem('pumpLab_hotkey_configs', JSON.stringify(window.userHotkeyConfigs));
+  window.renderHotkeys();
+  window.showToast("Hotkeys & Configs reset to default", "success");
+};
+
 // Global Keyboard Listener
 document.addEventListener('keydown', (e) => {
-  // 1. Are we assigning a new hotkey?
   if (window.activeHotkeyAssign) {
     e.preventDefault();
     const action = window.activeHotkeyAssign;
     
     if (e.key === 'Escape') {
-      window.userHotkeys[action] = null; // Unbind
+      window.userHotkeys[action] = null; 
     } else {
       const combo = window.getHotkeyString(e);
-      if (!combo) return; // Wait for them to press a non-modifier key
+      if (!combo) return; 
       window.userHotkeys[action] = combo; 
     }
     
@@ -1731,14 +1853,11 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // 2. Safety Check: Do not execute hotkeys if typing in Chat or Search bars
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-  // 3. Safety Check: Only execute if looking at the Terminal
+  // Safety Checks
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   const tokenPage = document.getElementById('page-token');
   if (!tokenPage || tokenPage.style.display === 'none') return;
 
-  // 4. Execution Logic
   const combo = window.getHotkeyString(e);
   if (!combo) return;
 
@@ -1752,6 +1871,29 @@ document.addEventListener('keydown', (e) => {
     window.executeHotkeyAction(triggeredAction);
   }
 });
+
+// Dynamic Execution Engine
+window.executeHotkeyAction = function(action) {
+   if (!window.connectedWallet) return window.showToast("Connect wallet to use Pro Hotkeys", "warning");
+
+   const ticker = document.querySelector('.token-header-sym')?.textContent.split('/')[0] || "TOKEN";
+   const config = window.userHotkeyConfigs[action];
+   if (!config) return;
+
+   let amountStr = config.val;
+   let isSell = action.startsWith('sell_');
+
+   if (isSell) {
+       if (config.unit === 'Initial') amountStr = "Initial Capital";
+       else if (config.unit === '%') amountStr = config.val + "% Bag";
+       else amountStr = config.val + " Tokens";
+   } else {
+       if (config.unit === '%') amountStr = config.val + "% Wallet Bal";
+       else amountStr = config.val; // SOL
+   }
+
+   window.executeSnipe(null, ticker, amountStr, isSell);
+};
 
 // Routes the pressed hotkey to the Snipe Executor
 window.executeHotkeyAction = function(action) {
