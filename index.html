@@ -1475,82 +1475,131 @@ const STATE = {
 // GLOBAL STATUS BAR CONTROLLER
 // ============================================================
 window.initStatusBar = function() {
-  // 1. Fetch live SOL price from Binance's lightweight public API
   const fetchSolPrice = async () => {
     try {
-      // Swapped Binance (blocks US IPs) for CoinGecko's public API
       const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
       const data = await res.json();
       if (data && data.solana && data.solana.usd) {
         document.getElementById('status-sol-price').textContent = '$' + parseFloat(data.solana.usd).toFixed(2);
+        window.globalSolPrice = parseFloat(data.solana.usd);
       }
     } catch (e) {
       console.log("Status bar failed to sync SOL price.");
     }
   };
 
-  // Keep track of the active websocket globally so we can close it when switching coins
+  fetchSolPrice();
+  setInterval(fetchSolPrice, 15000); 
+
+  setInterval(() => {
+    const baseTps = 2700;
+    const tps = Math.floor(baseTps + (Math.random() * 400 - 200)); 
+    const ping = Math.floor(35 + Math.random() * 15); 
+    
+    const tpsEl = document.getElementById('status-tps');
+    const pingEl = document.getElementById('status-ping');
+    
+    if (tpsEl) tpsEl.textContent = tps.toLocaleString();
+    if (pingEl) pingEl.textContent = ping + 'ms';
+  }, 2000); 
+};
+
+// ============================================================
+// HELIUS LIVE WEBSOCKET ENGINE
+// ============================================================
 window.activeHeliusWs = null;
+window.txQueue = [];
+window.isProcessingTx = false;
+window.liveCandleWorker = null;
 
 window.startHeliusStream = function(poolAddress, ticker) {
-    // 1. Close any existing connections so we don't blow past our 5 connection limit
-    if (window.activeHeliusWs) {
-        window.activeHeliusWs.close();
-    }
+    if (window.activeHeliusWs) window.activeHeliusWs.close();
+    if (window.liveCandleWorker) clearInterval(window.liveCandleWorker);
+    
+    window.txQueue = [];
+    window.isProcessingTx = false;
 
-    // 2. Insert your Free Tier API Key here
+    // 🔥 Make sure your real key is here!
     const HELIUS_API_KEY = "3637ceed-59ac-465a-9a98-ebc048da759f"; 
+    
     const ws = new WebSocket(`wss://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
     window.activeHeliusWs = ws;
 
     ws.onopen = () => {
-        console.log(`[WSS] Tunnel opened to Helius for ${ticker}`);
-        
-        // Tell Helius we want to subscribe to the specific Liquidity Pool address
+        console.log(`[WSS] Connected to Matrix. Listening to Pool: ${poolAddress}`);
         ws.send(JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'logsSubscribe',
-            params: [
-                { mentions: [ poolAddress ] },
-                { commitment: 'confirmed' }
-            ]
+            jsonrpc: '2.0', id: 1, method: 'logsSubscribe',
+            params: [{ mentions: [ poolAddress ] }, { commitment: 'confirmed' }]
         }));
     };
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        
-        // Filter out the initial setup confirmation message
-        if (data.params && data.params.result && data.params.result.value) {
+        if (data.params?.result?.value) {
             const logs = data.params.result.value.logs;
             const signature = data.params.result.value.signature;
-            
-            // Only care about logs that actually execute a swap
-            if (logs && logs.some(log => log.includes("swap") || log.includes("Instruction: Swap"))) {
-                console.log(`🔥 [LIVE TRADE] $${ticker} | Signature:`, signature);
-                
-                // --- THE HARD PART GOES HERE ---
-                // To do this for free, you would take `data.params.result.value.err` and decode the base64 struct.
-                // Doing a getParsedTransaction here will instantly blow up your 10 req/s limit!
-                
-                // For now, let's just populate the "Trades" tab with a visual confirmation that the WSS is working
-                window.injectLiveTradeRow(ticker, signature);
+            if (logs && logs.some(l => l.includes("Swap") || l.includes("Trade"))) {
+                window.txQueue.push(signature);
             }
         }
     };
 
-    ws.onerror = (error) => {
-        console.error("[WSS] Helius connection error:", error);
-    };
+    window.liveCandleWorker = setInterval(async () => {
+        if (window.isProcessingTx || window.txQueue.length === 0) return;
+        
+        const targetSignature = window.txQueue.pop();
+        window.txQueue = []; 
+        window.isProcessingTx = true;
+
+        try {
+            const res = await fetch(`https://api.helius.xyz/v0/transactions/?api-key=${HELIUS_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transactions: [targetSignature] })
+            });
+
+            const parsedData = await res.json();
+            const tx = parsedData[0];
+
+            if (tx && tx.tokenTransfers && tx.tokenTransfers.length >= 2) {
+                let solAmount = 0;
+                let tokenAmount = 0;
+
+                tx.tokenTransfers.forEach(transfer => {
+                    if (transfer.mint === "So11111111111111111111111111111111111111112") {
+                        solAmount = transfer.tokenAmount;
+                    } else {
+                        tokenAmount = transfer.tokenAmount;
+                    }
+                });
+
+                if (solAmount > 0 && tokenAmount > 0) {
+                    const solPriceUsd = window.globalSolPrice || 145.00;
+                    const currentUsdPrice = (solAmount / tokenAmount) * solPriceUsd;
+                    
+                    console.log(`🔥 [LIVE TICK] ${ticker}: $${currentUsdPrice.toPrecision(5)}`);
+                    
+                    window.updateLiveChartTick(currentUsdPrice);
+                    
+                    const headerPrice = document.getElementById('token-price');
+                    const chartPrice = document.getElementById('chart-price');
+                    const formattedPrice = '$' + currentUsdPrice.toPrecision(4);
+                    if (headerPrice) headerPrice.textContent = formattedPrice;
+                    if (chartPrice) chartPrice.textContent = formattedPrice;
+                    
+                    window.injectLiveTradeRow(ticker, targetSignature, currentUsdPrice, solAmount > 0.5);
+                }
+            }
+        } catch (e) { }
+
+        window.isProcessingTx = false;
+    }, 400); 
 };
 
-// A quick helper to shove the live data into your empty Trades Tab
 window.injectLiveTradeRow = function(ticker, signature) {
     const tradesFeed = document.getElementById('trades-feed');
     if (!tradesFeed) return;
     
-    // Randomize Buy/Sell visually since we aren't decoding the binary yet
     const isBuy = Math.random() > 0.5; 
     const shortSig = signature.slice(0, 6) + '...' + signature.slice(-4);
     
@@ -1571,14 +1620,10 @@ window.injectLiveTradeRow = function(ticker, signature) {
     `;
     
     tradesFeed.insertAdjacentHTML('afterbegin', tradeHtml);
-    
-    // Flash the background color and keep the list at 15 items max
     setTimeout(() => tradesFeed.firstElementChild.style.background = 'transparent', 500);
     if (tradesFeed.children.length > 15) tradesFeed.lastElementChild.remove();
 };
-  // ============================================================
-// ADVERTISEMENT CONTROLLER
-// ============================================================
+
 window.initAds = function() {
   const ads = [
     { text: "🚀 Launch your next 100x gem on PumpLab today. Zero hidden fees.", action: () => window.showPage('launch') },
@@ -1600,24 +1645,19 @@ window.initAds = function() {
         adText.style.opacity = 1;
       }, 300);
     }
-  }, 10000); // Rotates every 10 seconds
+  }, 10000); 
 };
 
-// ============================================================
-// DYNAMIC CASHTAG SYNC
-// ============================================================
 window.updateTrendingCashtags = function() {
   const list = document.getElementById('trending-cashtags-list');
   if (!list || !window.terminalCache || window.terminalCache.length === 0) return;
 
-  // Grab the top 4 coins currently dominating the 1-Hour Volume
   const topCoins = [...window.terminalCache]
     .sort((a, b) => (b.vol1hNum || 0) - (a.vol1hNum || 0))
     .slice(0, 4);
 
   let html = '';
   topCoins.forEach((t) => {
-    // Generate a highly realistic tweet volume based on real trading volume
     const tweetVol = ((t.vol1hNum || 1000) / 45000).toFixed(1); 
     const displayVol = tweetVol > 0.5 ? tweetVol + 'k' : Math.floor(Math.random() * 800 + 200);
     
@@ -1629,23 +1669,6 @@ window.updateTrendingCashtags = function() {
     `;
   });
   list.innerHTML = html;
-};
-
-  fetchSolPrice();
-  setInterval(fetchSolPrice, 15000); // Update price every 15 seconds
-
-  // 2. Simulate live Solana Network TPS and Ping fluctuations
-  setInterval(() => {
-    const baseTps = 2700;
-    const tps = Math.floor(baseTps + (Math.random() * 400 - 200)); // Fluctuate around 2700
-    const ping = Math.floor(35 + Math.random() * 15); // Fluctuate between 35-50ms
-    
-    const tpsEl = document.getElementById('status-tps');
-    const pingEl = document.getElementById('status-ping');
-    
-    if (tpsEl) tpsEl.textContent = tps.toLocaleString();
-    if (pingEl) pingEl.textContent = ping + 'ms';
-  }, 2000); // Pulse every 2 seconds
 };
 
 const Utils = {
@@ -2162,6 +2185,20 @@ window.fetchTerminalData = async function() {
   }
 };
 
+window.updateLiveChartTick = function(livePrice) {
+    if (!window.globalCandleSeries || !window.currentLiveCandle) return;
+
+    // We are updating the "Close", "High", and "Low" of the current minute's candle
+    let candle = window.currentLiveCandle;
+    candle.close = livePrice;
+    
+    if (livePrice > candle.high) candle.high = livePrice;
+    if (livePrice < candle.low) candle.low = livePrice;
+
+    // Push the update to the TradingView canvas
+    window.globalCandleSeries.update(candle);
+};
+
 // The renderer: Sorts the data based on the active tab and draws the grid
 window.renderTerminalCards = function() {
   const grid = document.getElementById('terminal-grid');
@@ -2279,8 +2316,11 @@ window.updateReview = () => {
 
 // Sub-components rendering (Chat, Portfolio, Trenches)
 function renderStaticComponents() {
-  // 1. Chart Initializer
+  
   window.initChart = async function() {
+    window.globalCandleSeries = null;
+    window.currentLiveCandle = null;
+    
     const container = document.getElementById('priceChartContainer');
     if (!container || typeof LightweightCharts === 'undefined') return;
 
@@ -2328,6 +2368,9 @@ function renderStaticComponents() {
          
          candleSeries.setData(formattedData);
          
+         window.globalCandleSeries = candleSeries;
+         window.currentLiveCandle = formattedData[formattedData.length - 1];
+
          // Update the live UI price using the latest candlestick close!
          const latestPrice = data.data.attributes.ohlcv_list[0][4]; 
          const formattedPrice = '$' + latestPrice.toPrecision(4);
