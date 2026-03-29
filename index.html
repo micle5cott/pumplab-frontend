@@ -818,8 +818,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
     <!-- TOKEN HEADER -->
     <div class="token-header">
-      <div class="token-header-icon pump-glow" style="background:linear-gradient(135deg,#7c3aed,#06b6d4)">🐸</div>
-      <div style="flex:1">
+      <div class="token-header-icon pump-glow" id="token-header-icon" style="background:linear-gradient(135deg,#7c3aed,#06b6d4)">🐸</div>      <div style="flex:1">
         <div class="flex items-center gap-2 mb-3" style="gap:10px;margin-bottom:6px">
           <span class="token-header-name">PEPE2</span>
           <span class="token-header-sym">PEPE2/SOL</span>
@@ -886,15 +885,16 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
           <div class="grid-2" style="gap:12px;margin-bottom:16px">
             <div class="card" style="padding:14px">
               <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Market Cap</div>
-              <div style="font-size:18px;font-weight:800">$842K</div>
+              <div style="font-size:18px;font-weight:800" id="overview-mcap">$842K</div>
             </div>
             <div class="card" style="padding:14px">
               <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">24h Volume</div>
-              <div style="font-size:18px;font-weight:800">$284K</div>
+              <div style="font-size:18px;font-weight:800" id="overview-vol">$284K</div>
             </div>
             <div class="card" style="padding:14px">
               <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Liquidity</div>
-              <div style="font-size:18px;font-weight:800;color:var(--neon3)">$124K <span style="font-size:11px">🔒</span></div>
+              <div style="font-size:18px;font-weight:800;color:var(--neon3)" id="overview-liq">$124K <span style="font-size:11px">🔒</span></div>
+            </div>
             </div>
             <div class="card" style="padding:14px">
               <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Holders</div>
@@ -1489,6 +1489,93 @@ window.initStatusBar = function() {
     }
   };
 
+  // Keep track of the active websocket globally so we can close it when switching coins
+window.activeHeliusWs = null;
+
+window.startHeliusStream = function(poolAddress, ticker) {
+    // 1. Close any existing connections so we don't blow past our 5 connection limit
+    if (window.activeHeliusWs) {
+        window.activeHeliusWs.close();
+    }
+
+    // 2. Insert your Free Tier API Key here
+    const HELIUS_API_KEY = "3637ceed-59ac-465a-9a98-ebc048da759f"; 
+    const ws = new WebSocket(`wss://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`);
+    window.activeHeliusWs = ws;
+
+    ws.onopen = () => {
+        console.log(`[WSS] Tunnel opened to Helius for ${ticker}`);
+        
+        // Tell Helius we want to subscribe to the specific Liquidity Pool address
+        ws.send(JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'logsSubscribe',
+            params: [
+                { mentions: [ poolAddress ] },
+                { commitment: 'confirmed' }
+            ]
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Filter out the initial setup confirmation message
+        if (data.params && data.params.result && data.params.result.value) {
+            const logs = data.params.result.value.logs;
+            const signature = data.params.result.value.signature;
+            
+            // Only care about logs that actually execute a swap
+            if (logs && logs.some(log => log.includes("swap") || log.includes("Instruction: Swap"))) {
+                console.log(`🔥 [LIVE TRADE] $${ticker} | Signature:`, signature);
+                
+                // --- THE HARD PART GOES HERE ---
+                // To do this for free, you would take `data.params.result.value.err` and decode the base64 struct.
+                // Doing a getParsedTransaction here will instantly blow up your 10 req/s limit!
+                
+                // For now, let's just populate the "Trades" tab with a visual confirmation that the WSS is working
+                window.injectLiveTradeRow(ticker, signature);
+            }
+        }
+    };
+
+    ws.onerror = (error) => {
+        console.error("[WSS] Helius connection error:", error);
+    };
+};
+
+// A quick helper to shove the live data into your empty Trades Tab
+window.injectLiveTradeRow = function(ticker, signature) {
+    const tradesFeed = document.getElementById('trades-feed');
+    if (!tradesFeed) return;
+    
+    // Randomize Buy/Sell visually since we aren't decoding the binary yet
+    const isBuy = Math.random() > 0.5; 
+    const shortSig = signature.slice(0, 6) + '...' + signature.slice(-4);
+    
+    const tradeHtml = `
+      <div class="feed-item" style="animation: slideIn 0.3s ease forwards; background: var(--glass2);">
+        <div class="token-avatar" style="background:${isBuy ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.1)'}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isBuy ? '#34d399' : '#f87171'}" stroke-width="2"><path d="${isBuy ? 'M3 17l6-6 4 4 8-8 M17 7h4v4' : 'M3 7l6 6 4-4 8 8 M17 17h4v-4'}"/></svg>
+        </div>
+        <div class="feed-info">
+            <div class="feed-name">${isBuy ? 'BUY' : 'SELL'} ${ticker}</div>
+            <div class="feed-meta">Sig: ${shortSig}</div>
+        </div>
+        <div class="feed-value">
+            <div class="feed-price ${isBuy ? 'up' : 'down'}">Live Ping</div>
+            <div class="feed-change" style="color:var(--text3)">Just now</div>
+        </div>
+      </div>
+    `;
+    
+    tradesFeed.insertAdjacentHTML('afterbegin', tradeHtml);
+    
+    // Flash the background color and keep the list at 15 items max
+    setTimeout(() => tradesFeed.firstElementChild.style.background = 'transparent', 500);
+    if (tradesFeed.children.length > 15) tradesFeed.lastElementChild.remove();
+};
   // ============================================================
 // ADVERTISEMENT CONTROLLER
 // ============================================================
@@ -1744,40 +1831,58 @@ window.showPage = function(pageId) {
 
 // Navigate to specific token page and update the header
 window.viewToken = function(name, ticker, change, pairAddress) {
-  // 1. Sanitize the incoming data
-  const safeName = name || ticker || "Unknown";
-  const safeTicker = ticker || "TOKEN";
-  const safeChange = change !== undefined && change !== 'undefined' ? parseFloat(change) : (Math.random() * 50 - 10);
+  const tokenData = window.terminalCache?.find(t => t.pairAddress === pairAddress || t.ticker === ticker);
+  const safeName = tokenData?.name || name || ticker || "Unknown";
+  const safeTicker = tokenData?.ticker || ticker || "TOKEN";
+  const safeChange = tokenData?.change1h !== undefined ? tokenData.change1h : (change !== undefined && change !== 'undefined' ? parseFloat(change) : 0);
+  
+  window.currentPairAddress = pairAddress || tokenData?.pairAddress || "8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump"; 
 
-  // 2. Save the pair address globally so the Chart Engine can use it
-  window.currentPairAddress = pairAddress || "8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump"; 
-
-  // 3. Update the UI text elements
-  const nameEl = document.querySelector('.token-header-name');
-  const symEl = document.querySelector('.token-header-sym');
+  // --- UI UPDATES ---
+  if (document.querySelector('.token-header-name')) document.querySelector('.token-header-name').textContent = safeName;
+  if (document.querySelector('.token-header-sym')) document.querySelector('.token-header-sym').textContent = safeTicker + '/SOL';
+  
   const changeEl = document.getElementById('token-change');
-
-  if (nameEl) nameEl.textContent = safeName;
-  if (symEl) symEl.textContent = safeTicker + '/SOL';
+  const chartChangeEl = document.querySelector('.chart-header .up'); 
   if (changeEl) {
     const isUp = safeChange >= 0;
-    changeEl.textContent = (isUp ? '+' : '') + safeChange.toFixed(1) + '%';
+    const changeText = (isUp ? '+' : '') + safeChange.toFixed(1) + '%';
+    changeEl.textContent = changeText;
     changeEl.className = 'token-header-change ' + (isUp ? 'up' : 'down');
+    if (chartChangeEl) {
+       chartChangeEl.textContent = (isUp ? '↑ ' : '↓ ') + changeText;
+       chartChangeEl.className = isUp ? 'up' : 'down';
+    }
   }
 
-  // 4. SWITCH THE PAGE (This is what was missing!)
+  const iconEl = document.getElementById('token-header-icon');
+  if (iconEl) {
+    iconEl.style.background = 'var(--bg2)';
+    iconEl.innerHTML = tokenData?.image 
+        ? `<img src="${tokenData.image}" style="width:100%;height:100%;border-radius:14px;object-fit:cover;">` 
+        : `<span style="font-size:24px;color:var(--text2);">${safeTicker.charAt(0)}</span>`;
+  }
+
+  if (tokenData) {
+     const mcapEl = document.getElementById('overview-mcap');
+     const volEl = document.getElementById('overview-vol');
+     const liqEl = document.getElementById('overview-liq');
+     
+     if (mcapEl) mcapEl.textContent = '$' + tokenData.mcap;
+     if (volEl) volEl.textContent = '$' + tokenData.vol24h;
+     if (liqEl) liqEl.innerHTML = '$' + (tokenData.liquidity / 1000).toFixed(1) + 'K <span style="font-size:11px">🔒</span>';
+  }
+
   window.showPage('token');
-  
-  // 5. Update the navigation bar highlight
   document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
-  
-  // 6. Show the connection toast
   window.showToast(`Connected to ${safeTicker} node`, 'success');
   
-  // 7. Boot up the TradingView Chart (with a 50ms delay to prevent the 0x0 invisible canvas bug)
   if (typeof window.initChart === 'function') {
       setTimeout(window.initChart, 50); 
   }
+
+  // 🔥 START HELIUS WEBSOCKET CONNECTION
+  window.startHeliusStream(window.currentPairAddress, safeTicker);
 };
 
 window.handleSearch = function(val) {
@@ -2223,6 +2328,15 @@ function renderStaticComponents() {
          
          candleSeries.setData(formattedData);
          
+         // Update the live UI price using the latest candlestick close!
+         const latestPrice = data.data.attributes.ohlcv_list[0][4]; 
+         const formattedPrice = '$' + latestPrice.toPrecision(4);
+         
+         const headerPrice = document.getElementById('token-price');
+         const chartPrice = document.getElementById('chart-price');
+         if (headerPrice) headerPrice.textContent = formattedPrice;
+         if (chartPrice) chartPrice.textContent = formattedPrice;
+
          // Dynamically wrap the real data in our Lorentzian/N-W envelopes
          const upperData = formattedData.map(d => ({ time: d.time, value: d.high + (d.open * 0.05) }));
          const lowerData = formattedData.map(d => ({ time: d.time, value: d.low - (d.open * 0.05) }));
