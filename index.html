@@ -3493,27 +3493,55 @@ window.nukeAllPositions = function() {
 };
 
   // Add this inside the module script block
+  // ============================================================
+  // REAL-TIME PORTFOLIO & PnL COMMAND CENTER
+  // ============================================================
   window.loadRealPortfolio = async function() {
-    if (!window.connectedWallet) return;
+    const portList = document.getElementById('portfolio-list');
+    const totalUsdEl = document.getElementById('port-total-usd');
+    const pnlEl = document.getElementById('port-unrealized-pnl');
+    const tokensCountEl = document.getElementById('port-tokens');
+    const solBalEl = document.getElementById('port-sol');
+
+    // 1. DISCONNECTED STATE: Prompt for connection
+    if (!window.connectedWallet) {
+      if (portList) portList.innerHTML = `
+        <div style="padding:60px 20px; text-align:center;">
+          <div style="font-size:32px; margin-bottom:16px;">🔌</div>
+          <div style="font-size:14px; color:var(--text2); margin-bottom:20px;">Connect your wallet to track live PnL and manage positions.</div>
+          <button class="btn btn-primary" onclick="window.showModal('walletModal')">Connect Phantom</button>
+        </div>`;
+      return;
+    }
     
     try {
       const pubKey = window.connectedWallet.publicKey;
+      
+      // Fetch Real SOL Balance
       const bal = await connection.getBalance(pubKey);
       const solBalance = (bal / 1e9);
-      document.getElementById('port-sol').textContent = solBalance.toFixed(3) + ' SOL';
+      if (solBalEl) solBalEl.textContent = solBalance.toFixed(3) + ' SOL';
 
+      // Fetch SPL Token Accounts
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
       const activeTokens = tokenAccounts.value.filter(acc => acc.account.data.parsed.info.tokenAmount.uiAmount > 0);
-      document.getElementById('port-tokens').textContent = activeTokens.length;
+      
+      if (tokensCountEl) tokensCountEl.textContent = activeTokens.length;
 
-      const portList = document.getElementById('portfolio-list');
+      // 2. EMPTY BAG STATE: Prompt to trade
       if (activeTokens.length === 0) {
-        portList.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text3)">Your wallet is currently empty.</div>`;
+        if (portList) portList.innerHTML = `
+          <div style="padding:60px 20px; text-align:center;">
+            <div style="font-size:32px; margin-bottom:16px;">💎</div>
+            <div style="font-size:14px; color:var(--text2); margin-bottom:12px;">No active bags detected in this wallet.</div>
+            <div style="font-size:12px; color:var(--neon2); font-weight:700; cursor:pointer;" onclick="window.showPage('trenches')">The Trenches are looking hot right now →</div>
+          </div>`;
         return;
       }
 
-      let totalPortUsd = solBalance * (window.globalSolPrice || 140);
-      let totalUnrealizedPnL = 0;
+      // 3. LIVE PnL STATE: Math execution
+      let totalValueUsd = solBalance * (window.globalSolPrice || 145);
+      let totalPnL = 0;
       let html = '';
 
       activeTokens.forEach(acc => {
@@ -3521,27 +3549,27 @@ window.nukeAllPositions = function() {
         const mint = info.mint;
         const amount = info.tokenAmount.uiAmount;
         
-        // Match held token against our live market cache
+        // Pull real-time price from the global terminal cache
         const liveData = window.terminalCache?.find(t => t.address === mint);
         const currentPrice = liveData ? (parseFloat(liveData.price.replace('$','')) || 0) : 0;
         const marketValue = amount * currentPrice;
         
-        // PnL Calculation
-        const entryPrice = window.costBasis[mint] || (currentPrice * 0.9); // Fallback to -10% if entry unknown
+        // Calculate PnL based on recorded Cost Basis
+        const entryPrice = window.costBasis[mint] || currentPrice; 
         const pnlUsd = marketValue - (amount * entryPrice);
-        const pnlPct = ((currentPrice - entryPrice) / entryPrice) * 100;
+        const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
         
-        totalPortUsd += marketValue;
-        totalUnrealizedPnL += pnlUsd;
+        totalValueUsd += marketValue;
+        totalPnL += pnlUsd;
 
         html += `
-          <div class="portfolio-item" onclick="window.viewToken('', '', 0, '${mint}')">
+          <div class="portfolio-item" onclick="window.viewToken('', '', 0, '${mint}')" style="margin-bottom:8px;">
             <div style="display:flex; align-items:center; gap:12px;">
               <div style="width:40px; height:40px; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-                ${liveData?.image ? `<img src="${liveData.image}" style="width:100%">` : '🪙'}
+                ${liveData?.image ? `<img src="${liveData.image}" style="width:100%">` : '<span style="color:var(--text3); font-size:10px;">SOL</span>'}
               </div>
               <div>
-                <div style="font-size:14px; font-weight:800; color:var(--white)">${liveData?.ticker || mint.slice(0,4)}</div>
+                <div style="font-size:14px; font-weight:800; color:var(--white)">${liveData?.ticker || mint.slice(0,4).toUpperCase()}</div>
                 <div style="font-size:11px; color:var(--text3)">${amount.toLocaleString()} tokens</div>
               </div>
             </div>
@@ -3556,17 +3584,18 @@ window.nukeAllPositions = function() {
         `;
       });
 
-      portList.innerHTML = html;
-      document.getElementById('port-total-usd').textContent = '$' + totalPortUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      if (portList) portList.innerHTML = html;
+      if (totalUsdEl) totalUsdEl.textContent = '$' + totalValueUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
-      const pnlEl = document.getElementById('port-unrealized-pnl');
-      pnlEl.textContent = (totalUnrealizedPnL >= 0 ? '+$' : '-$') + Math.abs(totalUnrealizedPnL).toFixed(2);
-      pnlEl.style.color = totalUnrealizedPnL >= 0 ? 'var(--neon3)' : 'var(--red)';
+      if (pnlEl) {
+        pnlEl.textContent = (totalPnL >= 0 ? '+$' : '-$') + Math.abs(totalPnL).toFixed(2);
+        pnlEl.style.color = totalPnL >= 0 ? 'var(--neon3)' : 'var(--red)';
+      }
       
       if (window.lucide) window.lucide.createIcons({ root: portList });
 
     } catch (err) {
-      console.error("PnL Load Error:", err);
+      console.error("[Portfolio] Sync failed:", err);
     }
   };
 
