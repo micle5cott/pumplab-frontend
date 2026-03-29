@@ -396,7 +396,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 <body>
 
 <!-- NAV -->
- <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+ <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <nav class="nav">
   <div class="nav-logo" onclick="showPage('home')">
     <div class="nav-logo-icon">🚀</div>
@@ -1473,10 +1473,11 @@ window.initStatusBar = function() {
   // 1. Fetch live SOL price from Binance's lightweight public API
   const fetchSolPrice = async () => {
     try {
-      const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT');
+      // Swapped Binance (blocks US IPs) for CoinGecko's public API
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
       const data = await res.json();
-      if (data && data.price) {
-        document.getElementById('status-sol-price').textContent = '$' + parseFloat(data.price).toFixed(2);
+      if (data && data.solana && data.solana.usd) {
+        document.getElementById('status-sol-price').textContent = '$' + parseFloat(data.solana.usd).toFixed(2);
       }
     } catch (e) {
       console.log("Status bar failed to sync SOL price.");
