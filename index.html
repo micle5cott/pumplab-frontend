@@ -372,6 +372,11 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 .live-dot{width:7px;height:7px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite;box-shadow:0 0 6px rgba(16,185,129,.6)}
 
 /* MODAL OVERLAY */
+/* HOTKEY STYLING */
+.hotkey-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; color: var(--white); }
+.hotkey-btn { background: var(--bg); border: 1px solid var(--border2); color: var(--neon2); padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 12px; cursor: pointer; min-width: 36px; text-align: center; transition: all 0.2s; text-transform: uppercase; }
+.hotkey-btn:hover { border-color: var(--neon); box-shadow: var(--glow); }
+.hotkey-btn.listening { background: var(--neon); color: var(--white); border-color: var(--neon); animation: pulse 1s infinite; }
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:all}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:18px;max-width:480px;width:100%;padding:28px;animation:fadeUp .25s ease}
@@ -510,6 +515,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
       <div class="search-results" id="search-res"></div>
     </div>
     
+    <button class="btn btn-ghost btn-sm" onclick="window.showModal('settingsModal'); window.renderHotkeys()"><i data-lucide="settings" class="lucide-sm"></i></button>
     <button class="btn btn-ghost btn-sm" onclick="window.openGlobalChatWidget()"><i data-lucide="message-square" class="lucide-sm"></i> Chat</button>
     <button class="btn btn-ghost btn-sm" id="wallet-btn" onclick="showModal('walletModal')"><i data-lucide="wallet" class="lucide-sm"></i> Connect</button>
   </div>
@@ -518,11 +524,11 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 <!-- MOBILE NAV -->
 <div class="mobile-nav">
   <div class="mobile-nav-inner">
-    <div class="mobile-nav-item active" onclick="showPage('home');setMobileActive(this)"><span class="mobile-nav-icon">🏠</span><span class="mobile-nav-label">Home</span></div>
-    <div class="mobile-nav-item" onclick="showPage('launch');setMobileActive(this)"><span class="mobile-nav-icon">🚀</span><span class="mobile-nav-label">Launch</span></div>
-    <div class="mobile-nav-item" onclick="showPage('token');setMobileActive(this)"><span class="mobile-nav-icon">📈</span><span class="mobile-nav-label">Trade</span></div>
-    <div class="mobile-nav-item" onclick="showPage('trenches');setMobileActive(this)"><span class="mobile-nav-icon">💬</span><span class="mobile-nav-label">Trenches</span></div>
-    <div class="mobile-nav-item" onclick="showPage('security');setMobileActive(this)"><span class="mobile-nav-icon">🔐</span><span class="mobile-nav-label">Security</span></div>
+    <div class="mobile-nav-item active" onclick="showPage('home');setMobileActive(this)"><i data-lucide="home" class="mobile-nav-icon"></i><span class="mobile-nav-label">Home</span></div>
+    <div class="mobile-nav-item" onclick="showPage('launch');setMobileActive(this)"><i data-lucide="rocket" class="mobile-nav-icon"></i><span class="mobile-nav-label">Deploy</span></div>
+    <div class="mobile-nav-item" onclick="showPage('trenches');setMobileActive(this)"><i data-lucide="crosshairs" class="mobile-nav-icon"></i><span class="mobile-nav-label">Trenches</span></div>
+    <div class="mobile-nav-item" onclick="showPage('security');setMobileActive(this)"><i data-lucide="shield-check" class="mobile-nav-icon"></i><span class="mobile-nav-label">Security</span></div>
+    <div class="mobile-nav-item" onclick="showPage('portfolio');setMobileActive(this)"><i data-lucide="briefcase" class="mobile-nav-icon"></i><span class="mobile-nav-label">Portfolio</span></div>
   </div>
 </div>
 
@@ -541,8 +547,8 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
     <h1><span class="grad">The Most Trusted<br/>Meme Coin Launch Platform</span></h1>
     <p class="hero-sub">Launch, trade, and discover the next 100x meme coin with institutional-grade security and transparency tools.</p>
     <div class="hero-actions" style="position: relative; z-index: 50;">
-      <button class="btn btn-primary btn-xl" onclick="window.showPage('launch'); window.setActiveByIndex(1)">🚀 Launch a Token</button>
-      <button class="btn btn-ghost btn-xl" onclick="window.showPage('explore'); window.setActiveByIndex(2)">📈 Explore Tokens</button>
+      <button class="btn btn-primary btn-xl" onclick="window.showPage('launch'); window.setActiveByIndex(1)"><i data-lucide="rocket"></i> Launch a Token</button>
+      <button class="btn btn-ghost btn-xl" onclick="window.showPage('explore');"><i data-lucide="trending-up"></i> Explore Tokens</button>
     </div>
   </div>
 
@@ -890,8 +896,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
 <!-- ==================== TOKEN PAGE ==================== -->
  <div class="page" id="page-explore">
-  <div class="container" style="padding-top:24px; max-width:1200px">
-    
+  <div class="container" style="padding-top:24px; max-width:1800px">    
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
       <h2 style="margin: 0; font-weight: 900;">📈 Live Terminal</h2>
       <div style="display: flex; gap: 8px; background: var(--bg2); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
@@ -908,7 +913,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 </div>
 
 <div class="page" id="page-token">
-  <div class="container" style="padding-top:24px; max-width:1200px">
+  <div class="container" style="padding-top:24px; max-width:1800px">
 
     <!-- TOKEN HEADER -->
     <div class="token-header">
@@ -1061,8 +1066,8 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
         <div style="font-size:12px; color:var(--text2); margin-top:4px">Real-time terminal view. High risk, high reward.</div>
       </div>
       <div style="display:flex; gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="window.showModal('customizeModal')">⚙️ Customize</button>
-        <button class="btn btn-ghost btn-sm" onclick="window.showModal('globalChatModal')">💬 Open Global Chat</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.showModal('customizeModal')"><i data-lucide="sliders-horizontal" class="lucide-sm"></i> Customize</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.openGlobalChatWidget()"><i data-lucide="message-square" class="lucide-sm"></i> Global Chat</button>
       </div>
     </div>
 
@@ -1340,6 +1345,40 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   </div>
 </div>
 
+<div class="modal-overlay" id="settingsModal" onclick="closeModal('settingsModal',event)">
+  <div class="modal" style="max-width: 500px;">
+    <div class="modal-title"><i data-lucide="settings"></i> Global Settings & Hotkeys</div>
+    <div class="modal-body">
+      <div style="font-size:12px; color:var(--text2); margin-bottom: 16px;">
+        Click any button below, then press a key to assign a new hotkey. Press <kbd style="background:var(--bg); border:1px solid var(--border2); padding:2px 4px; border-radius:4px;">ESC</kbd> to clear a bind.
+      </div>
+      <div class="grid-2" style="gap: 16px;">
+        
+        <div class="card" style="padding: 14px;">
+          <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:12px;">Fast Buy Execution</div>
+          <div class="hotkey-row"><span>Buy 0.1 SOL</span> <button class="hotkey-btn" data-action="buy_0_1"></button></div>
+          <div class="hotkey-row"><span>Buy 0.5 SOL</span> <button class="hotkey-btn" data-action="buy_0_5"></button></div>
+          <div class="hotkey-row"><span>Buy 1.0 SOL</span> <button class="hotkey-btn" data-action="buy_1_0"></button></div>
+          <div class="hotkey-row"><span>Buy 50% Bal</span> <button class="hotkey-btn" data-action="buy_50_pct"></button></div>
+        </div>
+
+        <div class="card" style="padding: 14px;">
+          <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:12px;">Fast Sell Execution</div>
+          <div class="hotkey-row"><span>Sell 25%</span> <button class="hotkey-btn" data-action="sell_25_pct"></button></div>
+          <div class="hotkey-row"><span>Sell 50%</span> <button class="hotkey-btn" data-action="sell_50_pct"></button></div>
+          <div class="hotkey-row"><span>Sell 100%</span> <button class="hotkey-btn" data-action="sell_100_pct"></button></div>
+          <div class="hotkey-row"><span>Sell Initial</span> <button class="hotkey-btn" data-action="sell_initial"></button></div>
+        </div>
+
+      </div>
+    </div>
+    <div class="modal-actions" style="border-top: 1px solid var(--border); padding-top: 16px;">
+      <button class="btn btn-ghost" onclick="window.resetHotkeys()">Reset Defaults</button>
+      <button class="btn btn-primary" onclick="closeModal('settingsModal')">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="customizeModal" onclick="closeModal('customizeModal',event)">
   <div class="modal" style="max-width: 600px;">
     <div class="modal-title">⚙️ Advanced Terminal Filters</div>
@@ -1612,6 +1651,104 @@ window.startHeliusStream = function(poolAddress, ticker) {
     }, 400); 
 };
 
+// ============================================================
+// GLOBAL HOTKEY & SETTINGS ENGINE
+// ============================================================
+window.defaultHotkeys = {
+  'buy_0_1': '1', 'buy_0_5': '2', 'buy_1_0': '3', 'buy_50_pct': '4',
+  'sell_25_pct': 'q', 'sell_50_pct': 'w', 'sell_100_pct': 'e', 'sell_initial': 'r'
+};
+
+window.userHotkeys = JSON.parse(localStorage.getItem('pumpLab_hotkeys')) || { ...window.defaultHotkeys };
+window.activeHotkeyAssign = null;
+
+// Renders the saved keys into the modal UI
+window.renderHotkeys = function() {
+  document.querySelectorAll('.hotkey-btn').forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    const key = window.userHotkeys[action];
+    btn.textContent = key ? key : '—';
+    
+    // Assign listener for changing the keybind
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      document.querySelectorAll('.hotkey-btn').forEach(b => b.classList.remove('listening'));
+      btn.classList.add('listening');
+      btn.textContent = '...';
+      window.activeHotkeyAssign = action;
+    };
+  });
+};
+
+window.resetHotkeys = function() {
+  window.userHotkeys = { ...window.defaultHotkeys };
+  localStorage.setItem('pumpLab_hotkeys', JSON.stringify(window.userHotkeys));
+  window.renderHotkeys();
+  window.showToast("Hotkeys reset to default layout", "success");
+};
+
+// Global Keyboard Listener
+document.addEventListener('keydown', (e) => {
+  // 1. Are we currently assigning a new hotkey in the modal?
+  if (window.activeHotkeyAssign) {
+    e.preventDefault();
+    const action = window.activeHotkeyAssign;
+    
+    if (e.key === 'Escape') {
+      window.userHotkeys[action] = null; // Unbind
+    } else {
+      window.userHotkeys[action] = e.key.toLowerCase(); // Bind new key
+    }
+    
+    localStorage.setItem('pumpLab_hotkeys', JSON.stringify(window.userHotkeys));
+    window.activeHotkeyAssign = null;
+    window.renderHotkeys();
+    document.querySelectorAll('.hotkey-btn').forEach(b => b.classList.remove('listening'));
+    return;
+  }
+
+  // 2. Safety Check: Do not execute hotkeys if typing in Chat or Search bars
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  // 3. Safety Check: Only execute if the user is looking at the Terminal page
+  const tokenPage = document.getElementById('page-token');
+  if (!tokenPage || tokenPage.style.display === 'none') return;
+
+  // 4. Execution Logic
+  const keyPress = e.key.toLowerCase();
+  let triggeredAction = null;
+  
+  for (const [action, mappedKey] of Object.entries(window.userHotkeys)) {
+    if (mappedKey === keyPress) { triggeredAction = action; break; }
+  }
+
+  if (triggeredAction) {
+    e.preventDefault();
+    window.executeHotkeyAction(triggeredAction);
+  }
+});
+
+// Routes the pressed hotkey to the Snipe Executor
+window.executeHotkeyAction = function(action) {
+   if (!window.connectedWallet) return window.showToast("Connect wallet to use Pro Hotkeys", "warning");
+
+   const ticker = document.querySelector('.token-header-sym')?.textContent.split('/')[0] || "TOKEN";
+   let amountStr = "0";
+   let isSell = false;
+
+   if (action.startsWith('buy_')) {
+       if (action === 'buy_50_pct') amountStr = "50% Wallet Bal";
+       else amountStr = action.replace('buy_', '').replace('_', '.');
+   } else if (action.startsWith('sell_')) {
+       isSell = true;
+       if (action === 'sell_initial') amountStr = "Initial Capital";
+       else amountStr = action.replace('sell_', '').replace('_pct', '% Bag');
+   }
+
+   // Hijack the existing Quick Snipe modal to process the hotkey
+   window.executeSnipe(null, ticker, amountStr, isSell);
+};
+
 window.injectLiveTradeRow = function(ticker, signature, currentUsdPrice, tradeUsdValue, tokenAmount, isBuy) {
     const tradesFeed = document.getElementById('term-live-trades');
     if (!tradesFeed) return; 
@@ -1847,6 +1984,33 @@ const MarketController = {
     container.prepend(d);
     if (container.children.length > 5) container.lastChild.remove();
   }
+};
+
+// ============================================================
+// SPARKLINE SVG GENERATOR
+// ============================================================
+window.generateSparkline = function(isUp) {
+    const points = [];
+    let currentY = 12; // Start in the middle
+    
+    // Generate 7 points across a 60px wide canvas
+    for (let x = 0; x <= 60; x += 10) {
+        points.push(`${x},${currentY}`);
+        // Calculate the next trajectory
+        const volatility = Math.random() * 8;
+        const trend = isUp ? 5 : 3; 
+        currentY += (volatility - trend); 
+        // Keep it inside the canvas bounds (2px to 22px)
+        currentY = Math.max(2, Math.min(22, currentY)); 
+    }
+    
+    const strokeColor = isUp ? '#10b981' : '#ef4444';
+    
+    return `
+      <svg width="60" height="24" viewBox="0 0 60 24" style="overflow:visible; filter: drop-shadow(0 2px 4px ${strokeColor}40);">
+        <polyline points="${points.join(' ')}" fill="none" stroke="${strokeColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    `;
 };
 
 // ============================================================
@@ -2903,7 +3067,10 @@ window.initChart = async function() {
             <div class="trench-info">
               <div class="trench-row1">
                 <div class="trench-name">${t.name} <span class="badge ${isSafe ? 'badge-green' : 'badge-red'}" style="font-size:8px">${isSafe ? 'Pass' : 'Warn'}</span></div>
-                <div class="trench-metrics">MC: <strong>$${t.mcap}</strong></div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                  ${window.generateSparkline(t.change1h >= 0)}
+                  <div class="trench-metrics">MC: <strong style="color:var(--white)">$${t.mcap}</strong></div>
+                </div>
               </div>
               <div class="trench-row2">
                 <span>${t.age} ago</span> • <span>Liq: $${(liq/1000).toFixed(1)}k</span>
@@ -2931,6 +3098,8 @@ window.initChart = async function() {
         colEl.innerHTML = html;
       }
     });
+
+    setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 50);
   };
 
   // Run it initially on page load
@@ -3227,8 +3396,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // QUICK SNIPE EXECUTION
   // ============================================================
-  window.executeSnipe = function(event, symbol, amount) {
-    // Stop the click from also triggering the row underneath it
+  window.executeSnipe = function(event, symbol, amount, isSell = false) {
     if (event) event.stopPropagation();
 
     if (!window.connectedWallet) {
@@ -3236,18 +3404,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return window.showModal('walletModal');
     }
     
-    // Inject the specific coin's data into the modal
     const actionEl = document.getElementById('tx-action');
     const payEl = document.getElementById('tx-pay');
-    const receiveEl = document.getElementById('tx-receive');
     
-    if (actionEl) actionEl.textContent = `Buy $${symbol}`;
-    if (payEl) payEl.textContent = `${amount} SOL`;
-    if (receiveEl) receiveEl.textContent = `~ ${Math.floor(Math.random() * 800000 + 100000).toLocaleString()} $${symbol}`;
-    
-    // Set the hidden trade input so the execution router knows the amount
-    const tradeInput = document.getElementById('trade-amount');
-    if (tradeInput) tradeInput.value = amount;
+    if (actionEl) actionEl.textContent = `${isSell ? 'Sell' : 'Buy'} $${symbol}`;
+    if (payEl) payEl.textContent = `${amount} ${isSell ? symbol : 'SOL'}`;
     
     window.showModal('txPreview');
   };
