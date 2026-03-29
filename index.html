@@ -1479,12 +1479,15 @@ const STATE = {
 window.initStatusBar = function() {
   const fetchSolPrice = async () => {
     try {
-      // 🔥 Swapped CoinGecko for Jupiter API (Solana Native, No CORS issues)
-      const res = await fetch('https://price.jup.ag/v6/price?ids=SOL');
+      // 🔥 Upgraded to Jupiter Price API V3 (using the exact SOL Mint Address)
+      const res = await fetch('https://api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112');
       const json = await res.json();
       
-      if (json && json.data && json.data.SOL && json.data.SOL.price) {
-        const solPrice = parseFloat(json.data.SOL.price);
+      // V3 uses the mint address as the root key, and 'usdPrice' instead of 'price'
+      const solData = json["So11111111111111111111111111111111111111112"];
+      
+      if (solData && solData.usdPrice) {
+        const solPrice = parseFloat(solData.usdPrice);
         const priceEl = document.getElementById('status-sol-price');
         
         if (priceEl) {
@@ -1501,11 +1504,7 @@ window.initStatusBar = function() {
   };
 
   fetchSolPrice();
-  
-  // 🔥 Slowed down the polling from 15 seconds to 60 seconds. 
-  // You don't need micro-second updates for the global SOL price, 
-  // only for the specific meme coins which your WebSocket handles!
-  setInterval(fetchSolPrice, 60000); 
+  setInterval(fetchSolPrice, 60000); // Polling safely every 60s
 
   setInterval(() => {
     const baseTps = 2700;
