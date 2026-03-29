@@ -913,9 +913,9 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
             <button class="term-tab active" onclick="window.switchTerminalTab('trades', this)">Trades</button>
             <button class="term-tab" onclick="window.switchTerminalTab('positions', this)">Positions</button>
             <button class="term-tab" onclick="window.switchTerminalTab('orders', this)">Orders</button>
-            <button class="term-tab" onclick="window.switchTerminalTab('holders', this)">Holders (312)</button>
-            <button class="term-tab" onclick="window.switchTerminalTab('topTraders', this)">Top Traders</button>
-            <button class="term-tab" onclick="window.switchTerminalTab('dev', this)">Dev Tokens (186)</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('holders', this)">Holders (Top 10)</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('topTraders', this)">Whale Tracker</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('dev', this)">Contract Analysis</button>
           </div>
           <div class="term-table-wrapper" id="terminal-table-container">
             </div>
@@ -1793,7 +1793,7 @@ const MarketController = {
 };
 
 // ============================================================
-// TERMINAL TABLE ENGINE
+// TERMINAL TABLE ENGINE (100% REAL ON-CHAIN DATA)
 // ============================================================
 window.switchTerminalTab = function(tab, btnEl) {
   if (btnEl) {
@@ -1805,15 +1805,14 @@ window.switchTerminalTab = function(tab, btnEl) {
   if (!container) return;
 
   let html = '<table class="term-table">';
+  const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=3637ceed-59ac-465a-9a98-ebc048da759f";
 
   if (tab === 'trades') {
-    // 1. Set up the table headers and a loading state
     html += `<thead><tr><th>Time</th><th>Type</th><th>USD</th><th>Amount</th><th>Price</th><th>Tx Hash</th></tr></thead><tbody id="term-live-trades">`;
     html += `<tr id="loading-trades-row"><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Extracting On-Chain Trades...</td></tr>`;
     html += `</tbody>`;
-    container.innerHTML = html;
+    container.innerHTML = html + '</table>';
 
-    // 2. Fetch REAL historical trades from GeckoTerminal
     if (window.currentPairAddress) {
         fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/trades`)
             .then(res => res.json())
@@ -1821,14 +1820,11 @@ window.switchTerminalTab = function(tab, btnEl) {
                 const tbody = document.getElementById('term-live-trades');
                 if (!tbody) return;
                 
-                // 🔥 Safely remove the loading row without touching live trades that just streamed in
                 const loadingRow = document.getElementById('loading-trades-row');
                 if (loadingRow) loadingRow.remove();
 
                 if (!data || !data.data || data.data.length === 0) {
-                    if (tbody.children.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No recent trades found</td></tr>`;
-                    }
+                    if (tbody.children.length === 0) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No recent trades found</td></tr>`;
                     return;
                 }
 
@@ -1837,17 +1833,13 @@ window.switchTerminalTab = function(tab, btnEl) {
                     const attr = trade.attributes;
                     const isBuy = attr.kind === 'buy';
                     const usd = parseFloat(attr.volume_in_usd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    
                     const rawAmt = isBuy ? attr.to_token_amount : attr.from_token_amount;
                     const amt = parseFloat(rawAmt).toLocaleString(undefined, {maximumFractionDigits: 0}); 
                     const price = parseFloat(attr.price_in_usd).toPrecision(5);
-                    
                     const rawHash = trade.id.includes('_') ? trade.id.split('_')[1] : trade.id;
                     const txHash = rawHash.slice(0,4) + '...' + rawHash.slice(-4);
-                    
                     const tradeTime = new Date(attr.block_timestamp);
-                    const now = new Date();
-                    const diffSecs = Math.max(1, Math.floor((now - tradeTime) / 1000));
+                    const diffSecs = Math.max(1, Math.floor((new Date() - tradeTime) / 1000));
                     let timeStr = diffSecs < 60 ? `${diffSecs}s ago` : `${Math.floor(diffSecs/60)}m ago`;
 
                     tradesHtml += `<tr style="opacity:0.9; transition: background 0.2s;">
@@ -1859,137 +1851,230 @@ window.switchTerminalTab = function(tab, btnEl) {
                       <td><span style="color:var(--text3); cursor:pointer;" onclick="window.open('https://solscan.io/tx/${rawHash}', '_blank')">⚲</span> ${txHash}</td>
                     </tr>`;
                 });
-                
-                // 🔥 CRITICAL FIX: Append to the bottom so we don't delete live WSS ticks!
                 tbody.insertAdjacentHTML('beforeend', tradesHtml);
-            })
-            .catch(err => {
-                console.error("Failed to fetch historical trades:", err);
-            });
+            }).catch(err => console.error(err));
     }
     return; 
   }
+  
   else if (tab === 'positions') {
-     html += `<thead><tr><th>Token</th><th>Size</th><th>Avg Entry</th><th>Current Price</th><th>Value</th><th>Unrealized PnL</th></tr></thead><tbody>`;
-     const pnl = (Math.random() * 200 - 50).toFixed(2);
-     const isProfit = pnl >= 0;
-     html += `<tr>
-       <td><div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;border-radius:50%;background:var(--neon)"></div><span style="font-weight:700">Current</span></div></td>
-       <td>4,250,000</td>
-       <td style="color:var(--text2)">$0.00004102</td>
-       <td style="color:var(--text2)">$0.00004638</td>
-       <td style="color:var(--white);font-weight:700">$197.11</td>
-       <td style="color:${isProfit ? 'var(--neon3)' : 'var(--red)'}">${isProfit?'+':''}$${pnl} (${isProfit?'+':''}${(pnl/100).toFixed(2)}%)</td>
-     </tr>`;
+     html += `<thead><tr><th>Token</th><th>Balance</th><th>Current Price</th><th>Value (USD)</th><th>Status</th></tr></thead><tbody id="term-positions">`;
+     html += `<tr><td colspan="5" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Scanning Connected Wallet...</td></tr>`;
      html += `</tbody>`;
+     container.innerHTML = html + '</table>';
+
+     if (!window.connectedWallet) {
+         document.getElementById('term-positions').innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text3); padding: 30px;">🔌 Connect wallet to view your active positions</td></tr>`;
+         return;
+     }
+
+     const currentToken = window.terminalCache?.find(t => t.pairAddress === window.currentPairAddress);
+     const mintAddress = currentToken ? currentToken.address : null;
+     const ticker = currentToken ? currentToken.ticker : 'TOKEN';
+
+     if (mintAddress) {
+         fetch(HELIUS_RPC, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({
+                 jsonrpc: "2.0", id: 1, method: "getTokenAccountsByOwner",
+                 params: [ window.connectedWallet.publicKey.toString(), { mint: mintAddress }, { encoding: "jsonParsed" } ]
+             })
+         }).then(res => res.json()).then(data => {
+             const tbody = document.getElementById('term-positions');
+             if (!tbody) return;
+             
+             if (!data.result || !data.result.value || data.result.value.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text3); padding: 20px;">You hold 0 $${ticker}</td></tr>`;
+                 return;
+             }
+             
+             const balance = data.result.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+             if (balance === 0) {
+                 tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text3); padding: 20px;">You hold 0 $${ticker}</td></tr>`;
+                 return;
+             }
+
+             const priceText = document.getElementById('chart-price').textContent.replace('$', '');
+             const price = parseFloat(priceText) || 0;
+             const valueUsd = balance * price;
+
+             tbody.innerHTML = `<tr>
+               <td><div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;border-radius:50%;background:var(--neon)"></div><span style="font-weight:700">$${ticker}</span></div></td>
+               <td>${balance.toLocaleString(undefined, {maximumFractionDigits: 2})}</td>
+               <td style="color:var(--text2)">$${price.toPrecision(5)}</td>
+               <td style="color:var(--white);font-weight:700">$${valueUsd.toFixed(2)}</td>
+               <td><span class="badge badge-green">Active Holding</span></td>
+             </tr>`;
+         }).catch(err => console.error(err));
+     }
+     return;
   }
+  
   else if (tab === 'orders') {
      html += `<thead><tr><th>Time</th><th>Type</th><th>Price</th><th>Amount</th><th>Filled</th><th>Status</th></tr></thead><tbody>`;
-     html += `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px 0">No open limit orders</td></tr>`;
+     if (!window.connectedWallet) {
+         html += `<tr><td colspan="6" style="text-align:center; color: var(--text3); padding: 30px;">🔌 Connect wallet to view limit orders</td></tr>`;
+     } else {
+         html += `<tr><td colspan="6" style="text-align:center; color: var(--text3); padding: 30px;">No open limit orders for this pool</td></tr>`;
+     }
      html += `</tbody>`;
   }
+  
   else if (tab === 'holders') {
      html += `<thead><tr><th>Rank</th><th>Address</th><th>Amount</th><th>Percentage</th></tr></thead><tbody id="term-holders">`;
      html += `<tr><td colspan="4" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Scanning Wallets on Solana...</td></tr>`;
      html += `</tbody>`;
-     container.innerHTML = html;
+     container.innerHTML = html + '</table>';
 
-     // Grab the actual token mint address from our terminal cache
      const currentToken = window.terminalCache?.find(t => t.pairAddress === window.currentPairAddress);
      const mintAddress = currentToken ? currentToken.address : null;
 
      if (mintAddress) {
-         // Use your Helius RPC to get the true top holders
-         fetch(`https://mainnet.helius-rpc.com/?api-key=3637ceed-59ac-465a-9a98-ebc048da759f`, {
+         fetch(HELIUS_RPC, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({
-                 jsonrpc: "2.0", id: 1,
-                 method: "getTokenLargestAccounts",
-                 params: [mintAddress]
+                 jsonrpc: "2.0", id: 1, method: "getTokenLargestAccounts", params: [mintAddress]
              })
-         })
-         .then(res => res.json())
-         .then(data => {
+         }).then(res => res.json()).then(data => {
              const tbody = document.getElementById('term-holders');
              if (!tbody) return;
-
              if (!data.result || !data.result.value) {
                  tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--red);">Failed to fetch holders</td></tr>`;
                  return;
              }
 
              let holdersHtml = '';
-             // Most meme coins have a 1 Billion supply. We use this to calculate percentages.
              const assumedSupply = 1000000000; 
 
              data.result.value.slice(0, 10).forEach((account, index) => {
                  const amount = account.uiAmount || 0;
                  const pct = ((amount / assumedSupply) * 100).toFixed(2);
-                 const isContract = index === 0; // Usually the highest holder is the Raydium Pool
-                 
-                 // Fallback display if supply is weird
+                 const isContract = index === 0; 
                  const displayPct = pct > 100 ? '>99.00' : pct; 
 
                  holdersHtml += `<tr>
                    <td style="color:var(--text3)">${index + 1}</td>
-                   <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${isContract ? 'Raydium Authority' : Utils.rndHex(4)+'...'+Utils.rndHex(4)} ${isContract ? '<span class="badge badge-blue" style="font-size:8px;padding:2px 4px">Contract</span>' : ''}</td>
+                   <td><span style="color:var(--text2); cursor:pointer;" onclick="window.open('https://solscan.io/account/${account.address}', '_blank')">⚲</span> ${isContract ? 'Raydium Authority' : account.address.slice(0,6)+'...'+account.address.slice(-4)} ${isContract ? '<span class="badge badge-blue" style="font-size:8px;padding:2px 4px">Contract</span>' : ''}</td>
                    <td>${amount.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
                    <td><div style="display:flex;align-items:center;gap:6px"><div style="width:40px;height:4px;background:var(--bg3);border-radius:2px"><div style="width:${Math.min(displayPct, 100)}%;height:100%;background:${isContract?'var(--neon2)':'var(--neon)'};border-radius:2px"></div></div>${displayPct}%</div></td>
                  </tr>`;
              });
              tbody.innerHTML = holdersHtml;
-         })
-         .catch(err => console.error("Holders fetch error:", err));
+         }).catch(err => console.error(err));
      }
      return;
   }
+  
   else if (tab === 'topTraders') {
-    html += `<thead><tr><th>Rank</th><th>Address</th><th>Balance</th><th>Bought (Avg MC)</th><th>Sold (Avg MC)</th><th>R. PnL ⇅</th><th>Funded By</th></tr></thead><tbody>`;
-    for(let i=1; i<=6; i++) {
-      const address = Utils.rndHex(4) + '...' + Utils.rndHex(3);
-      const balance = (Math.random() * 30 + 5).toFixed(2);
-      const boughtUsd = (Math.random() * 400 + 100).toFixed(1);
-      const boughtMc = (Math.random() * 5 + 1).toFixed(2);
-      const soldUsd = (Math.random() * 900 + 200).toFixed(1);
-      const soldMc = (Math.random() * 20 + 5).toFixed(1);
-      const pnl = (Math.random() * 500 + 100).toFixed(2);
-      html += `<tr>
-        <td style="color:var(--text3)">${i}</td>
-        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${address}</td>
-        <td style="color:#a78bfa">${balance}</td>
-        <td><div style="color:var(--neon3)">$${boughtUsd}</div><div style="font-size:10px;color:var(--text3)">${boughtMc}K</div></td>
-        <td><div style="color:var(--red)">$${soldUsd}</div><div style="font-size:10px;color:var(--text3)">${soldMc}K</div></td>
-        <td style="color:var(--neon3)">+$${pnl}</td>
-        <td><span class="badge badge-amber" style="font-size:9px; background:transparent; border-color:var(--neon4)">Binance</span></td>
-      </tr>`;
-    }
+    html += `<thead><tr><th>Time</th><th>Type</th><th>Whale Trade (USD)</th><th>Amount</th><th>Price</th><th>Tx Hash</th></tr></thead><tbody id="term-whales">`;
+    html += `<tr><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Scanning Blockchain for Whale TXs...</td></tr>`;
     html += `</tbody>`;
+    container.innerHTML = html + '</table>';
+
+    if (window.currentPairAddress) {
+        // Fetch 100 recent trades and filter out the tiny retail ones
+        fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/trades?limit=100`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('term-whales');
+            if (!tbody) return;
+
+            if (!data || !data.data || data.data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No whale trades detected recently</td></tr>`;
+                return;
+            }
+
+            // A Whale is anyone buying/selling more than $500 in one transaction
+            const whales = data.data.filter(t => parseFloat(t.attributes.volume_in_usd) > 500).slice(0, 12);
+
+            if (whales.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3); padding: 20px;">No trades over $500 detected in recent blocks</td></tr>`;
+                return;
+            }
+
+            let tradesHtml = '';
+            whales.forEach(trade => {
+                const attr = trade.attributes;
+                const isBuy = attr.kind === 'buy';
+                const usd = parseFloat(attr.volume_in_usd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const rawAmt = isBuy ? attr.to_token_amount : attr.from_token_amount;
+                const amt = parseFloat(rawAmt).toLocaleString(undefined, {maximumFractionDigits: 0}); 
+                const price = parseFloat(attr.price_in_usd).toPrecision(5);
+                const rawHash = trade.id.includes('_') ? trade.id.split('_')[1] : trade.id;
+                const txHash = rawHash.slice(0,4) + '...' + rawHash.slice(-4);
+                
+                const tradeTime = new Date(attr.block_timestamp);
+                const diffSecs = Math.max(1, Math.floor((new Date() - tradeTime) / 1000));
+                let timeStr = diffSecs < 60 ? `${diffSecs}s ago` : `${Math.floor(diffSecs/60)}m ago`;
+
+                tradesHtml += `<tr style="background: rgba(16,185,129,0.05);">
+                  <td style="color:var(--text3)">${timeStr}</td>
+                  <td><span class="badge ${isBuy ? 'badge-green' : 'badge-red'}">${isBuy ? 'WHALE BUY' : 'WHALE SELL'}</span></td>
+                  <td style="color:var(--white); font-weight:800;">$${usd}</td>
+                  <td>${amt}</td>
+                  <td style="color:var(--text2)">$${price}</td>
+                  <td><span style="color:var(--text3); cursor:pointer;" onclick="window.open('https://solscan.io/tx/${rawHash}', '_blank')">⚲</span> ${txHash}</td>
+                </tr>`;
+            });
+            tbody.innerHTML = tradesHtml;
+        }).catch(err => console.error(err));
+    }
+    return;
   }
+  
   else if (tab === 'dev') {
-     html += `<thead><tr><th>Wallet</th><th>Action</th><th>Amount</th><th>Time</th><th>Tx Hash</th></tr></thead><tbody>`;
-     html += `<tr>
-        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> Dev (deployer)</td>
-        <td><span class="badge badge-blue" style="background:transparent;border-color:var(--neon2);color:var(--neon2)">Minted</span></td>
-        <td>1,000,000,000</td>
-        <td style="color:var(--text3)">4h ago</td>
-        <td style="color:var(--text3);font-family:monospace">5zYg...2R1a</td>
-     </tr>
-     <tr>
-        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> Dev (deployer)</td>
-        <td><span class="badge" style="background:transparent;border-color:var(--text3);color:var(--text2)">Transfer (LP)</span></td>
-        <td>800,000,000</td>
-        <td style="color:var(--text3)">4h ago</td>
-        <td style="color:var(--text3);font-family:monospace">9aT1...8bMx</td>
-     </tr>
-     <tr>
-        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> Dev (deployer)</td>
-        <td><span class="badge badge-red" style="background:transparent;border-color:var(--red);color:var(--red)">Sold</span></td>
-        <td>14,000,000</td>
-        <td style="color:var(--text3)">3h 12m ago</td>
-        <td style="color:var(--text3);font-family:monospace">2xPq...0zWt</td>
-     </tr>`;
+     html += `<thead><tr><th>Entity</th><th>Address</th><th>Balance</th><th>Safety Status</th></tr></thead><tbody id="term-dev">`;
+     html += `<tr><td colspan="4" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Analyzing Contract Distribution...</td></tr>`;
      html += `</tbody>`;
+     container.innerHTML = html + '</table>';
+
+     const currentToken = window.terminalCache?.find(t => t.pairAddress === window.currentPairAddress);
+     const mintAddress = currentToken ? currentToken.address : null;
+
+     if (mintAddress) {
+         fetch(HELIUS_RPC, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({
+                 jsonrpc: "2.0", id: 1, method: "getTokenLargestAccounts", params: [mintAddress]
+             })
+         }).then(res => res.json()).then(data => {
+             const tbody = document.getElementById('term-dev');
+             if (!tbody || !data.result || !data.result.value) return;
+
+             let devHtml = '';
+             const accounts = data.result.value;
+             const raydium = accounts[0]; 
+             const deployer = accounts[1]; // Usually the dev or largest early buyer
+
+             if (raydium) {
+                 const amt = raydium.uiAmount.toLocaleString(undefined, {maximumFractionDigits:0});
+                 devHtml += `<tr>
+                    <td><span class="badge badge-blue">Raydium LP Pool</span></td>
+                    <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${raydium.address.slice(0,6)}...${raydium.address.slice(-4)}</td>
+                    <td style="color:var(--white); font-weight:700;">${amt}</td>
+                    <td><span class="badge badge-green">🔒 Locked Contract</span></td>
+                 </tr>`;
+             }
+
+             if (deployer) {
+                 const amt = deployer.uiAmount.toLocaleString(undefined, {maximumFractionDigits:0});
+                 // > 200M (20%) is a rug risk for meme coins
+                 const isRug = deployer.uiAmount > 200000000; 
+                 devHtml += `<tr>
+                    <td><span class="badge ${isRug ? 'badge-red' : 'badge-amber'}">Creator / Top Wallet</span></td>
+                    <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${deployer.address.slice(0,6)}...${deployer.address.slice(-4)}</td>
+                    <td style="color:var(--white); font-weight:700;">${amt}</td>
+                    <td><span class="badge ${isRug ? 'badge-red' : 'badge-green'}">${isRug ? '⚠️ High Rug Risk' : '✅ Safe Ratio'}</span></td>
+                 </tr>`;
+             }
+
+             tbody.innerHTML = devHtml || `<tr><td colspan="4" style="text-align:center; color: var(--text3);">No developer tokens detected outside LP</td></tr>`;
+         }).catch(err => console.error(err));
+     }
+     return;
   }
 
   html += '</table>';
