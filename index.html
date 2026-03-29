@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PumpLab — The Most Trusted Meme Coin Launch Platform</title>
 <style>
+  
 :root{
   --bg:#06060e;
   --bg2:#0d0d1a;
@@ -395,6 +396,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 <body>
 
 <!-- NAV -->
+ <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 <nav class="nav">
   <div class="nav-logo" onclick="showPage('home')">
     <div class="nav-logo-icon">🚀</div>
@@ -858,14 +860,15 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
               <div class="up" style="font-size:13px;font-weight:700">↑ +142.3%</div>
             </div>
             <div style="display:flex;gap:4px">
-              <button class="slip-btn active" onclick="setChartPeriod(this)">1H</button>
-              <button class="slip-btn" onclick="setChartPeriod(this)">6H</button>
-              <button class="slip-btn" onclick="setChartPeriod(this)">24H</button>
-              <button class="slip-btn" onclick="setChartPeriod(this)">7D</button>
+              <button class="slip-btn" onclick="setChartPeriod(this)">10S</button>
+              <button class="slip-btn active" onclick="setChartPeriod(this)">5M</button>
+              <button class="slip-btn" onclick="setChartPeriod(this)">1H</button>
+              <button class="slip-btn" onclick="setChartPeriod(this)">1D</button>
+              <button class="slip-btn" style="color: #a78bfa; border-color: rgba(124,58,237,0.3)" onclick="window.showToast('Lorentzian & N-W Envelopes Toggled', 'success')">ƒ(x)</button>
             </div>
           </div>
           <div class="chart-canvas">
-            <canvas id="priceChart" style="width:100%;height:100%"></canvas>
+            <div id="priceChartContainer" style="width:100%;height:100%"></div>
           </div>
         </div>
 
@@ -1632,7 +1635,7 @@ const MarketController = {
     items.forEach(t => {
       const d = document.createElement('div');
       d.className = 'token-card' + (t.up ? ' pump-glow' : '');
-      d.onclick = () => window.viewToken(t.sym);
+      d.onclick = () => window.viewToken(t.name, t.sym, parseFloat(t.change));
       d.innerHTML = `
         <div class="token-card-top">
           <div class="token-icon" style="background:var(--bg2)">${t.icon}</div>
@@ -1655,7 +1658,7 @@ const MarketController = {
     [...this.tokens].sort((a, b) => b.trust - a.trust).slice(0, 5).forEach((t, i) => {
       const d = document.createElement('div');
       d.className = 'feed-item';
-      d.onclick = () => window.viewToken(t.sym);
+     d.onclick = () => window.viewToken(t.name, t.sym, 0);
       d.innerHTML = `
         <div style="width:20px;font-size:12px;font-weight:800;color:var(--text3)">${i + 1}</div>
         <div class="token-avatar" style="background:var(--bg2)">${t.icon}</div>
@@ -1688,7 +1691,7 @@ const MarketController = {
     const t = this.tokens[Math.floor(Math.random() * this.tokens.length)];
     const d = document.createElement('div');
     d.className = 'feed-item';
-    d.onclick = () => window.viewToken(t.sym);
+    d.onclick = () => window.viewToken(t.name, t.sym, parseFloat(t.change));
     d.style.animation = isInit ? 'none' : 'slideIn 0.3s ease forwards';
     
     if(!isInit) { d.style.background = 'var(--glass2)'; setTimeout(()=> d.style.background = 'transparent', 1000); }
@@ -1735,28 +1738,26 @@ window.showPage = function(pageId) {
 
 // Navigate to specific token page and update the header
 window.viewToken = function(name, ticker, change) {
-  // 1. Update the Token Page Header text to match the clicked coin
+  const safeName = name || ticker || "Unknown";
+  const safeTicker = ticker || "TOKEN";
+  const safeChange = change !== undefined && change !== 'undefined' ? parseFloat(change) : (Math.random() * 50 - 10);
+
   const nameEl = document.querySelector('.token-header-name');
   const symEl = document.querySelector('.token-header-sym');
   const changeEl = document.getElementById('token-change');
 
-  if (nameEl) nameEl.textContent = name;
-  if (symEl) symEl.textContent = ticker + '/SOL';
+  if (nameEl) nameEl.textContent = safeName;
+  if (symEl) symEl.textContent = safeTicker + '/SOL';
   if (changeEl) {
-    const isUp = parseFloat(change) >= 0;
-    changeEl.textContent = (isUp ? '+' : '') + change + '%';
+    const isUp = safeChange >= 0;
+    changeEl.textContent = (isUp ? '+' : '') + safeChange.toFixed(1) + '%';
     changeEl.className = 'token-header-change ' + (isUp ? 'up' : 'down');
   }
 
-  // 2. Route the user to the Token page
   window.showPage('token');
-
-  // 3. Clear the top nav highlights since we are deep-linked into a coin
   document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
-
-  window.showToast(`Connected to ${ticker} node`, 'success');
+  window.showToast(`Connected to ${safeTicker} node`, 'success');
   
-  // (Optional visual flair) force the chart to re-draw
   if (typeof window.initChart === 'function') window.initChart();
 };
 
@@ -1772,7 +1773,7 @@ window.handleSearch = function(val) {
     resEl.innerHTML = `<div style="padding:10px; font-size:12px; color:var(--text3); text-align:center;">No tokens found</div>`;
   } else {
     resEl.innerHTML = matches.slice(0, 5).map(t => `
-      <div class="search-item" onmousedown="window.viewToken('${t.sym}'); document.getElementById('search-res').style.display='none';">
+      <div class="search-item" onmousedown="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.sym.replace(/'/g, "\\'")}', 0); document.getElementById('search-res').style.display='none';">
          <div class="token-avatar" style="width:24px; height:24px; font-size:12px; background:var(--bg2)">${t.icon}</div>
          <div><div style="font-size:12px; font-weight:700;">${t.name}</div><div style="font-size:10px; color:var(--text3);">$${t.sym}</div></div>
       </div>
@@ -2153,27 +2154,75 @@ window.updateReview = () => {
 function renderStaticComponents() {
   // 1. Chart Initializer
   window.initChart = function() {
-    const canvas = document.getElementById('priceChart');
-    if(!canvas || canvas._drawn) return;
-    canvas._drawn = true;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.offsetWidth || 600, H = canvas.offsetHeight || 240;
-    canvas.width = W; canvas.height = H;
-    let pts = []; let p = 0.5;
-    for(let i=0; i<120; i++){ p+=((Math.random()-.42)*.04); pts.push(Math.max(.05,Math.min(.95,p))); }
+    const container = document.getElementById('priceChartContainer');
+    if(!container) return;
     
-    STATE.chartTimer = setInterval(() => {
-      pts.shift(); pts.push(Math.max(.05,Math.min(.95,pts[pts.length-1]+((Math.random()-.45)*.03))));
-      ctx.clearRect(0,0,W,H);
-      const grad = ctx.createLinearGradient(0,0,0,H);
-      grad.addColorStop(0,'rgba(124,58,237,0.35)'); grad.addColorStop(1,'rgba(124,58,237,0)');
-      ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(0,H);
-      pts.forEach((v,i) => { const x=(i/(pts.length-1))*W, y=H-v*H*.8-H*.08; ctx.lineTo(x,y); });
-      ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(124,58,237,0.9)'; ctx.lineWidth = 2; ctx.beginPath();
-      pts.forEach((v,i) => { const x=(i/(pts.length-1))*W, y=H-v*H*.8-H*.08; i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-      ctx.stroke();
-    }, 800);
+    // Clean up previous chart instance if it exists
+    if(container.chartInstance) {
+      container.chartInstance.remove();
+    }
+    container.innerHTML = '';
+    
+    // Initialize TradingView Lightweight Chart
+    const chart = LightweightCharts.createChart(container, {
+      layout: { 
+        background: { type: 'solid', color: 'transparent' }, 
+        textColor: '#94a3b8' 
+      },
+      grid: { 
+        vertLines: { color: 'rgba(255,255,255,0.05)' }, 
+        horzLines: { color: 'rgba(255,255,255,0.05)' } 
+      },
+      crosshair: { mode: 0 },
+      timeScale: { 
+        timeVisible: true, 
+        secondsVisible: true 
+      }
+    });
+    container.chartInstance = chart;
+
+    const candleSeries = chart.addCandlestickSeries({
+      upColor: '#10b981', 
+      downColor: '#ef4444', 
+      borderVisible: false,
+      wickUpColor: '#10b981', 
+      wickDownColor: '#ef4444'
+    });
+
+    // Generate simulated dynamic candlestick data
+    const data = [];
+    let time = Math.floor(Date.now() / 1000) - (100 * 300); // 100 5-min candles
+    let currentPrice = 0.0000500;
+    
+    for(let i=0; i<100; i++) {
+      const open = currentPrice;
+      const close = open + (Math.random() - 0.48) * (open * 0.1);
+      const high = Math.max(open, close) + Math.random() * (open * 0.05);
+      const low = Math.min(open, close) - Math.random() * (open * 0.05);
+      data.push({ time, open, high, low, close });
+      currentPrice = close;
+      time += 300; // Next candle in 5 minutes
+    }
+    candleSeries.setData(data);
+
+    // Indicator Envelope Visualizer
+    const upperEnvelope = chart.addLineSeries({ color: 'rgba(124,58,237,0.5)', lineWidth: 1, crosshairMarkerVisible: false });
+    const lowerEnvelope = chart.addLineSeries({ color: 'rgba(6,182,212,0.5)', lineWidth: 1, crosshairMarkerVisible: false });
+    
+    const upperData = data.map(d => ({ time: d.time, value: d.high + (d.open * 0.15) }));
+    const lowerData = data.map(d => ({ time: d.time, value: d.low - (d.open * 0.15) }));
+    
+    upperEnvelope.setData(upperData);
+    lowerEnvelope.setData(lowerData);
+
+    // Make chart responsive to window resizing
+    new ResizeObserver(entries => {
+      if (entries.length === 0 || entries[0].target !== container) return;
+      chart.applyOptions({ 
+        width: entries[0].contentRect.width, 
+        height: entries[0].contentRect.height 
+      });
+    }).observe(container);
   };
 
   // ============================================================
@@ -2263,7 +2312,7 @@ function renderStaticComponents() {
           : `<span style="font-size:16px; font-weight:800; color:var(--text2);">${(t.ticker || 'T').charAt(0)}</span>`;
 
         html += `
-          <div class="trench-item" style="${borderStyle}">
+          <div class="trench-item" style="${borderStyle}; cursor: pointer;" onclick="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}')">
             <div class="trench-avatar" style="background:var(--bg); border: 1px solid var(--border2);">${iconHtml}</div>
             <div class="trench-info">
               <div class="trench-row1">
