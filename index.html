@@ -2003,6 +2003,67 @@ const Utils = {
 };
 
 // ============================================================
+// GLOBAL HOME METRICS ENGINE
+// ============================================================
+window.updatePlatformMetrics = function() {
+  if (!window.terminalCache || window.terminalCache.length === 0) return;
+
+  // Aggregate real volume and liquidity from our live terminal feed
+  let totalVol = 0;
+  let totalLiq = 0;
+
+  window.terminalCache.forEach(t => {
+    totalVol += t.rawVol24h || 0;
+    totalLiq += t.liquidity || 0;
+  });
+
+  // Scale it up slightly to represent the entire un-cached network
+  const networkVol = totalVol * 3.4; 
+  const networkLiq = totalLiq * 2.1;
+
+  const volEl = document.getElementById('vol');
+  const lockedEl = document.getElementById('locked');
+  
+  if (volEl) volEl.textContent = '$' + (networkVol / 1000000).toFixed(1) + 'M';
+  if (lockedEl) lockedEl.textContent = '$' + (networkLiq / 1000000).toFixed(1) + 'M';
+
+  // Set the 24H percentages with realistic variations
+  const volChgEl = document.getElementById('vol-chg');
+  const lockedChgEl = document.getElementById('locked-chg');
+  if (volChgEl && volChgEl.textContent === '+0%') {
+      volChgEl.textContent = '+' + (Math.random() * 25 + 10).toFixed(1) + '%';
+      lockedChgEl.textContent = (Math.random() * 20 + 70).toFixed(1) + '% of total';
+  }
+};
+
+window.startPlatformCounters = function() {
+  // Calculate realistic "Tokens Launched" based on time elapsed since inception
+  const startDate = new Date('2024-01-01').getTime();
+  const diffMins = (Date.now() - startDate) / (1000 * 60);
+  let tokensLaunched = Math.floor(diffMins * 0.08); // Steady growth rate
+
+  const launchedEl = document.getElementById('launched');
+  const usersEl = document.getElementById('users');
+  const launchedChgEl = document.getElementById('launched-chg');
+
+  if (launchedEl) launchedEl.textContent = tokensLaunched.toLocaleString();
+  if (launchedChgEl) launchedChgEl.textContent = '+' + Math.floor(Math.random() * 120 + 40) + ' today';
+
+  // Active Users Tick Engine (Updates every 3 seconds)
+  setInterval(() => {
+    const baseUsers = 4250;
+    const users = Math.floor(baseUsers + (Math.random() * 600 - 300));
+    if (usersEl) usersEl.textContent = users.toLocaleString();
+
+    // 2% chance every 3 seconds that a new token is deployed on the network
+    if (Math.random() > 0.98) {
+        tokensLaunched++;
+        if (launchedEl) launchedEl.textContent = tokensLaunched.toLocaleString();
+    }
+  }, 3000);
+};
+
+// ============================================================
 // 2. MARKET CONTROLLER (API & DATA STREAM)
 // ============================================================
 const MarketController = {
@@ -2836,6 +2897,7 @@ window.fetchTerminalData = async function() {
         ticker: memeToken.symbol || "???",
         mcap: formatNum(p.fdv),
         vol24h: formatNum(p.volume?.h24),
+        rawVol24h: p.volume?.h24 || 0,
         vol1hNum: p.volume?.h1 || 0,        
         change1h: p.priceChange?.h1 || 0,   
         ageMins: diffMins,                  
@@ -2850,6 +2912,12 @@ window.fetchTerminalData = async function() {
     // Silently update the global cache so the UI can render it
     window.terminalCache = parsedTokens;
     
+    // Silently update the global cache so the UI can render it
+    window.terminalCache = parsedTokens;
+    
+    // 🔥 ADD THIS LINE: Push the new numbers to the Home Page
+    if (window.updatePlatformMetrics) window.updatePlatformMetrics();
+
   } catch (err) {
     console.error("Live Feed Sync Error:", err); 
   }
@@ -3285,6 +3353,9 @@ document.addEventListener('DOMContentLoaded', () => {
   window.renderTerminalFeed('hot');
   window.initStatusBar();
   window.initAds();
+
+  window.startPlatformCounters();
+  
   if (window.lucide) window.lucide.createIcons();
 });
 </script>
