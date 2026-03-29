@@ -1492,8 +1492,13 @@ window.startHeliusStream = function(poolAddress, ticker) {
     window.liveCandleWorker = setInterval(async () => {
         if (window.isProcessingTx || window.txQueue.length === 0) return;
         
-        const targetSignature = window.txQueue.pop();
-        window.txQueue = []; 
+        // 🔥 FIX 1: Don't destroy the queue! Cap it at 15 to prevent lag during crazy volume.
+        if (window.txQueue.length > 15) {
+            window.txQueue = window.txQueue.slice(-15);
+        }
+        
+        // Process the oldest pending trade first (FIFO)
+        const targetSignature = window.txQueue.shift(); 
         window.isProcessingTx = true;
 
         try {
@@ -1804,7 +1809,7 @@ window.switchTerminalTab = function(tab, btnEl) {
   if (tab === 'trades') {
     // 1. Set up the table headers and a loading state
     html += `<thead><tr><th>Time</th><th>Type</th><th>USD</th><th>Amount</th><th>Price</th><th>Tx Hash</th></tr></thead><tbody id="term-live-trades">`;
-    html += `<tr><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Extracting On-Chain Trades...</td></tr>`;
+    html += `<tr id="loading-trades-row"><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Extracting On-Chain Trades...</td></tr>`;
     html += `</tbody>`;
     container.innerHTML = html;
 
@@ -1816,13 +1821,13 @@ window.switchTerminalTab = function(tab, btnEl) {
                 const tbody = document.getElementById('term-live-trades');
                 if (!tbody) return;
                 
-                // Remove the "Extracting..." loading message safely
-                const loadingRow = tbody.querySelector('td[colspan="6"]');
-                if (loadingRow && loadingRow.parentElement) loadingRow.parentElement.remove();
+                // 🔥 Safely remove the loading row without touching live trades that just streamed in
+                const loadingRow = document.getElementById('loading-trades-row');
+                if (loadingRow) loadingRow.remove();
 
                 if (!data || !data.data || data.data.length === 0) {
                     if (tbody.children.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No historical trades found</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No recent trades found</td></tr>`;
                     }
                     return;
                 }
@@ -1832,6 +1837,7 @@ window.switchTerminalTab = function(tab, btnEl) {
                     const attr = trade.attributes;
                     const isBuy = attr.kind === 'buy';
                     const usd = parseFloat(attr.volume_in_usd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    
                     const rawAmt = isBuy ? attr.to_token_amount : attr.from_token_amount;
                     const amt = parseFloat(rawAmt).toLocaleString(undefined, {maximumFractionDigits: 0}); 
                     const price = parseFloat(attr.price_in_usd).toPrecision(5);
@@ -1844,7 +1850,7 @@ window.switchTerminalTab = function(tab, btnEl) {
                     const diffSecs = Math.max(1, Math.floor((now - tradeTime) / 1000));
                     let timeStr = diffSecs < 60 ? `${diffSecs}s ago` : `${Math.floor(diffSecs/60)}m ago`;
 
-                    tradesHtml += `<tr style="opacity:0.6; transition: background 0.2s;">
+                    tradesHtml += `<tr style="opacity:0.9; transition: background 0.2s;">
                       <td style="color:var(--text3)">${timeStr}</td>
                       <td style="color:${isBuy ? 'var(--neon3)' : 'var(--red)'}; font-weight:700">${isBuy ? 'Buy' : 'Sell'}</td>
                       <td style="color:var(--white)">$${usd}</td>
@@ -1857,8 +1863,11 @@ window.switchTerminalTab = function(tab, btnEl) {
                 // 🔥 CRITICAL FIX: Append to the bottom so we don't delete live WSS ticks!
                 tbody.insertAdjacentHTML('beforeend', tradesHtml);
             })
+            .catch(err => {
+                console.error("Failed to fetch historical trades:", err);
+            });
     }
-    return; // Exit early since we updated the DOM asynchronously
+    return; 
   }
   else if (tab === 'positions') {
      html += `<thead><tr><th>Token</th><th>Size</th><th>Avg Entry</th><th>Current Price</th><th>Value</th><th>Unrealized PnL</th></tr></thead><tbody>`;
