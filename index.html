@@ -910,11 +910,11 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
         <div class="term-card">
           <div class="term-tabs">
-            <button class="term-tab" onclick="window.switchTerminalTab('trades', this)">Trades</button>
+            <button class="term-tab active" onclick="window.switchTerminalTab('trades', this)">Trades</button>
             <button class="term-tab" onclick="window.switchTerminalTab('positions', this)">Positions</button>
             <button class="term-tab" onclick="window.switchTerminalTab('orders', this)">Orders</button>
             <button class="term-tab" onclick="window.switchTerminalTab('holders', this)">Holders (312)</button>
-            <button class="term-tab active" onclick="window.switchTerminalTab('topTraders', this)">Top Traders</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('topTraders', this)">Top Traders</button>
             <button class="term-tab" onclick="window.switchTerminalTab('dev', this)">Dev Tokens (186)</button>
           </div>
           <div class="term-table-wrapper" id="terminal-table-container">
@@ -2021,9 +2021,11 @@ window.viewToken = function(name, ticker, change, pairAddress) {
   // 🔥 START HELIUS WEBSOCKET CONNECTION
   window.startHeliusStream(window.currentPairAddress, safeTicker);
   
-  // 🔥 POPULATE THE TERMINAL TABLE
-  if (typeof window.renderTopTraders === 'function') {
-      window.renderTopTraders();
+  // 🔥 INITIALIZE THE TERMINAL TO THE TRADES TAB AUTOMATICALLY
+  if (typeof window.switchTerminalTab === 'function') {
+      const tabs = document.querySelectorAll('.term-tab');
+      // tabs[0] corresponds to the first button (Trades)
+      if (tabs.length > 0) window.switchTerminalTab('trades', tabs[0]);
   }
 };
 
