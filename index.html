@@ -305,6 +305,22 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 .portfolio-item { background: var(--glass); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; transition: background .15s; cursor:pointer;}
 .portfolio-item:hover { background: var(--glass2); }
 
+/* FLOATING GLOBAL CHAT */
+.floating-chat { position: fixed; bottom: 24px; left: 24px; width: 340px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; z-index: 2000; box-shadow: var(--shadow); display: flex; flex-direction: column; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.floating-chat.minimized { transform: translateY(calc(100% - 46px)); }
+.floating-chat.hidden { display: none; }
+.fc-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: rgba(0,0,0,0.3); border-radius: 12px 12px 0 0; transition: background 0.2s; }
+.fc-header:hover { background: rgba(124,58,237,0.1); }
+.fc-title { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--white); }
+.fc-controls { display: flex; gap: 4px; }
+.fc-btn { background: none; border: none; color: var(--text3); cursor: pointer; transition: all 0.2s; font-size: 16px; display:flex; align-items:center; justify-content:center; width: 24px; height: 24px; border-radius: 4px; }
+.fc-btn:hover { color: var(--white); background: var(--glass2); }
+.fc-body { height: 350px; display: flex; flex-direction: column; padding: 12px; }
+
+/* COMPACT TOKEN GRID */
+.token-data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+@media(max-width: 1024px) { .token-data-grid { grid-template-columns: 1fr; } }
+
 /* ANIMATIONS */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes pumpGlow{0%,100%{box-shadow:0 0 0 rgba(16,185,129,0)}50%{box-shadow:0 0 20px rgba(16,185,129,.4)}}
@@ -882,134 +898,73 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
         <div id="tab-0" style="display:none">
 
-        <!-- OVERVIEW TAB -->
-        <div id="tab-0">
-          <div class="grid-2" style="gap:12px;margin-bottom:16px">
-            <div class="card" style="padding:14px">
-              <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Market Cap</div>
-              <div style="font-size:18px;font-weight:800" id="overview-mcap">$842K</div>
-            </div>
-            <div class="card" style="padding:14px">
-              <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">24h Volume</div>
-              <div style="font-size:18px;font-weight:800" id="overview-vol">$284K</div>
-            </div>
-            <div class="card" style="padding:14px">
-              <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Liquidity</div>
-              <div style="font-size:18px;font-weight:800;color:var(--neon3)" id="overview-liq">$124K <span style="font-size:11px">🔒</span></div>
-            </div>
-            </div>
-            <div class="card" style="padding:14px">
-              <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Holders</div>
-              <div style="font-size:18px;font-weight:800">3,482</div>
-            </div>
-          </div>
-          <!-- TRUST BREAKDOWN -->
-          <div class="card">
-            <div class="card-header"><div class="card-title">🛡️ Transparency Report</div></div>
-            <div class="risk-item">
-              <div>
-                <div class="risk-label">Liquidity Lock</div>
-                <div style="font-size:11px;color:var(--text3)">Locked for 6 months via PumpLab</div>
+        <div class="token-data-grid">
+          
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div class="grid-2" style="gap:12px;">
+              <div class="card" style="padding:14px">
+                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Market Cap</div>
+                <div style="font-size:18px;font-weight:800" id="overview-mcap">$0.00</div>
               </div>
-              <div style="text-align:right">
-                <div class="risk-level risk-low">✓ Locked</div>
-                <div style="font-size:10px;color:var(--text3)">5mo 14d left</div>
+              <div class="card" style="padding:14px">
+                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">24h Volume</div>
+                <div style="font-size:18px;font-weight:800" id="overview-vol">$0.00</div>
+              </div>
+              <div class="card" style="padding:14px">
+                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Liquidity</div>
+                <div style="font-size:18px;font-weight:800;color:var(--neon3)" id="overview-liq">$0.00 <span style="font-size:11px">🔒</span></div>
+              </div>
+              <div class="card" style="padding:14px">
+                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Holders</div>
+                <div style="font-size:18px;font-weight:800">3,482</div>
               </div>
             </div>
-            <div class="risk-item">
-              <div>
-                <div class="risk-label">Dev Wallet</div>
-                <div style="font-size:11px;color:var(--text3)">2% of total supply</div>
-              </div>
-              <div class="risk-level risk-low">✓ Safe</div>
-            </div>
-            <div class="risk-item">
-              <div>
-                <div class="risk-label">Mint Authority</div>
-                <div style="font-size:11px;color:var(--text3)">Can new tokens be minted?</div>
-              </div>
-              <div class="risk-level risk-low">✓ Revoked</div>
-            </div>
-            <div class="risk-item">
-              <div>
-                <div class="risk-label">Freeze Authority</div>
-                <div style="font-size:11px;color:var(--text3)">Can wallets be frozen?</div>
-              </div>
-              <div class="risk-level risk-low">✓ Revoked</div>
-            </div>
-            <div class="risk-item">
-              <div>
-                <div class="risk-label">Top 10 Holders</div>
-                <div style="font-size:11px;color:var(--text3)">Concentration risk</div>
-              </div>
-              <div class="risk-level risk-med">⚠ 31%</div>
-            </div>
-          </div>
-        </div>
 
-        <!-- TRADES TAB -->
-        <div id="tab-1" style="display:none">
-          <div class="card">
-            <div id="trades-feed"></div>
-          </div>
-        </div>
+            <div id="tab-3"></div>
 
-        <!-- HOLDERS TAB -->
-        <div id="tab-2" style="display:none">
-          <div class="card">
-            <div class="card-header"><div class="card-title">Top Holders</div><span class="badge badge-gray">3,482 total</span></div>
-            <div id="holders-list"></div>
-          </div>
-        </div>
-
-        <!-- CONTRACT TAB -->
-        <div id="tab-3" style="display:none">
-          <div class="card">
-            <div class="card-header"><div class="card-title">🔍 Contract Analysis</div><span class="badge badge-green">Auto-scanned</span></div>
-            <div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:12px;font-family:monospace;font-size:11px;color:var(--text2);word-break:break-all">
-              Contract: <span style="color:#a78bfa">7xKp9mNe3CvQ8rZ2wJfY1bLdT5hGcP4sRnUoWqAiX6e</span>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-                <span style="font-size:12px">✅ No hidden fees</span><span class="badge badge-green">Pass</span>
+            <div class="card">
+              <div class="card-header"><div class="card-title">🛡️ Transparency Report</div></div>
+              <div class="risk-item">
+                <div><div class="risk-label">Liquidity Lock</div><div style="font-size:11px;color:var(--text3)">Locked for 6 months</div></div>
+                <div style="text-align:right"><div class="risk-level risk-low">✓ Locked</div></div>
               </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-                <span style="font-size:12px">✅ Standard SPL token</span><span class="badge badge-green">Pass</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-                <span style="font-size:12px">✅ No blacklist function</span><span class="badge badge-green">Pass</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-                <span style="font-size:12px">⚠️ Ownership not renounced</span><span class="badge badge-amber">Warn</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
-                <span style="font-size:12px">✅ LP tokens locked</span><span class="badge badge-green">Pass</span>
+              <div class="risk-item">
+                <div><div class="risk-label">Mint/Freeze Authority</div><div style="font-size:11px;color:var(--text3)">Contract mutation risk</div></div>
+                <div class="risk-level risk-low">✓ Revoked</div>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- CHAT TAB -->
-        <div id="tab-4" style="display:none">
-          <div class="card">
-            <div class="card-header"><div class="card-title">💬 Token Chat</div><span class="live-dot"></span></div>
-            <div class="chat-container">
-              <div class="chat-messages" id="token-chat-msgs"></div>
-              <div>
-                <div class="emoji-row">
-                  <span class="emoji-btn" onclick="sendReaction('🚀')">🚀</span>
-                  <span class="emoji-btn" onclick="sendReaction('💎')">💎</span>
-                  <span class="emoji-btn" onclick="sendReaction('🐳')">🐳</span>
-                  <span class="emoji-btn" onclick="sendReaction('🔥')">🔥</span>
-                  <span class="emoji-btn" onclick="sendReaction('📉')">📉</span>
-                </div>
-                <div class="chat-input-row">
-                  <input class="chat-input" id="token-chat-input" placeholder="Say something... (non-custodial, anon)" onkeydown="if(event.key==='Enter')sendTokenMsg()"/>
-                  <button class="btn btn-primary btn-sm" onclick="sendTokenMsg()">Send</button>
+          
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div class="card">
+              <div class="card-header"><div class="card-title">💬 Token Chat</div><span class="live-dot"></span></div>
+              <div class="chat-container" style="height: 220px;">
+                <div class="chat-messages" id="token-chat-msgs"></div>
+                <div>
+                  <div class="emoji-row">
+                    <span class="emoji-btn" onclick="sendReaction('🚀')">🚀</span>
+                    <span class="emoji-btn" onclick="sendReaction('💎')">💎</span>
+                    <span class="emoji-btn" onclick="sendReaction('🐳')">🐳</span>
+                  </div>
+                  <div class="chat-input-row">
+                    <input class="chat-input" id="token-chat-input" placeholder="Say something anon..." onkeydown="if(event.key==='Enter')sendTokenMsg()"/>
+                    <button class="btn btn-primary btn-sm" onclick="sendTokenMsg()">Send</button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <div class="card">
+               <div class="card-header" style="margin-bottom:8px;"><div class="card-title">⚡ Live Trades</div></div>
+               <div id="trades-feed" style="max-height: 200px; overflow-y: auto;"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="card-title">👥 Top Holders</div></div>
+              <div id="holders-list"></div>
+            </div>
           </div>
+
         </div>
 
       </div>
@@ -1404,21 +1359,22 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   </div>
 </div>
 
-<div class="modal-overlay" id="globalChatModal" onclick="closeModal('globalChatModal',event)">
-  <div class="modal">
-    <div class="modal-title">💬 Global Trenches Chat</div>
-    <div class="modal-body" style="padding-bottom:0; margin-bottom:0;">
-      <div class="chat-container">
-        <div class="chat-messages" id="global-chat-msgs" style="min-height: 200px;">
-          <div class="chat-msg"><div class="chat-avatar" style="background:var(--neon3)">D</div><div class="chat-content"><div class="chat-header"><span class="chat-user">DegenDan</span></div><div class="chat-text">Anyone watching the volume on $PEPE2? 🚀</div></div></div>
-          <div class="chat-msg"><div class="chat-avatar" style="background:var(--neon4)">S</div><div class="chat-content"><div class="chat-header"><span class="chat-user">SniperX</span></div><div class="chat-text">Dev wallet looks a bit sus, waiting for the LP to lock.</div></div></div>
-        </div>
-        <div class="chat-input-row" style="margin-top:16px;">
-          <input class="chat-input" id="global-chat-input" placeholder="Drop some alpha..." onkeydown="if(event.key==='Enter') window.sendGlobalChat()"/>
-          <button class="btn btn-primary btn-sm" onclick="window.sendGlobalChat()">Send</button>
-        </div>
-        </div>
-      </div>
+<div class="floating-chat" id="global-chat-widget">
+  <div class="fc-header" onclick="window.toggleChatMinimize(event)">
+    <div class="fc-title"><span class="live-dot"></span> Global Trenches Chat</div>
+    <div class="fc-controls">
+      <button class="fc-btn" onclick="window.toggleChatMinimize(event)" title="Minimize/Expand">_</button>
+      <button class="fc-btn" onclick="window.closeGlobalChatWidget(event)" title="Hide Permanently">×</button>
+    </div>
+  </div>
+  <div class="fc-body">
+    <div class="chat-messages" id="global-chat-msgs" style="flex:1;">
+      <div class="chat-msg"><div class="chat-avatar" style="background:var(--neon3)">D</div><div class="chat-content"><div class="chat-header"><span class="chat-user">DegenDan</span></div><div class="chat-text">Anyone watching the volume on new pairs? 🚀</div></div></div>
+      <div class="chat-msg"><div class="chat-avatar" style="background:var(--neon4)">S</div><div class="chat-content"><div class="chat-header"><span class="chat-user">SniperX</span></div><div class="chat-text">Dev wallet looks a bit sus on that dog coin.</div></div></div>
+    </div>
+    <div class="chat-input-row" style="margin-top:10px;">
+      <input class="chat-input" id="global-chat-input" placeholder="Drop some alpha..." onkeydown="if(event.key==='Enter') window.sendGlobalChat()"/>
+      <button class="btn btn-primary btn-sm" onclick="window.sendGlobalChat()">Send</button>
     </div>
   </div>
 </div>
@@ -1926,6 +1882,43 @@ window.viewToken = function(name, ticker, change, pairAddress) {
   window.startHeliusStream(window.currentPairAddress, safeTicker);
 };
 
+// ============================================================
+// GLOBAL CHAT WIDGET LOGIC
+// ============================================================
+window.toggleChatMinimize = function(e) {
+  if(e) e.stopPropagation();
+  const chat = document.getElementById('global-chat-widget');
+  chat.classList.toggle('minimized');
+};
+
+window.closeGlobalChatWidget = function(e) {
+  if(e) e.stopPropagation();
+  document.getElementById('global-chat-widget').classList.add('hidden');
+  localStorage.setItem('pumpLab_hideGlobalChat', 'true');
+  window.showToast("Global chat hidden. You can reopen it from the top navigation bar.", "info");
+};
+
+window.openGlobalChatWidget = function() {
+  const chat = document.getElementById('global-chat-widget');
+  chat.classList.remove('hidden');
+  chat.classList.remove('minimized');
+  localStorage.setItem('pumpLab_hideGlobalChat', 'false');
+};
+
+// Check local storage on load
+document.addEventListener('DOMContentLoaded', () => {
+  if(localStorage.getItem('pumpLab_hideGlobalChat') === 'true') {
+     document.getElementById('global-chat-widget').classList.add('hidden');
+  }
+});
+
+// Update the Trenches page button to use the new widget instead of the deleted modal
+document.querySelectorAll('button').forEach(b => {
+  if (b.textContent.includes('Open Global Chat')) {
+    b.setAttribute('onclick', 'window.openGlobalChatWidget()');
+  }
+});
+
 window.handleSearch = function(val) {
   const resEl = document.getElementById('search-res');
   if(!val || val.length < 2) { resEl.style.display = 'none'; return; }
@@ -2000,16 +1993,6 @@ window.setActiveByIndex = function(index) {
 window.setMobileActive = function(el) {
   document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
   if (el) el.classList.add('active');
-};
-
-// 2. Token Page Tabs (Overview, Trades, Holders, Contract, Chat)
-window.setTokenTab = function(index, el) {
-  document.querySelectorAll('#token-tabs .tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  for(let i = 0; i < 5; i++) {
-    const tabContent = document.getElementById('tab-' + i);
-    if(tabContent) tabContent.style.display = (i === index) ? 'block' : 'none';
-  }
 };
 
 // 3. Chart Timeframe Buttons
