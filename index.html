@@ -1816,8 +1816,14 @@ window.switchTerminalTab = function(tab, btnEl) {
                 const tbody = document.getElementById('term-live-trades');
                 if (!tbody) return;
                 
+                // Remove the "Extracting..." loading message safely
+                const loadingRow = tbody.querySelector('td[colspan="6"]');
+                if (loadingRow && loadingRow.parentElement) loadingRow.parentElement.remove();
+
                 if (!data || !data.data || data.data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No recent trades found</td></tr>`;
+                    if (tbody.children.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text3);">No historical trades found</td></tr>`;
+                    }
                     return;
                 }
 
@@ -1826,23 +1832,19 @@ window.switchTerminalTab = function(tab, btnEl) {
                     const attr = trade.attributes;
                     const isBuy = attr.kind === 'buy';
                     const usd = parseFloat(attr.volume_in_usd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    
-                    // The API returns the token amount under from_token_amount or to_token_amount depending on the swap route
                     const rawAmt = isBuy ? attr.to_token_amount : attr.from_token_amount;
                     const amt = parseFloat(rawAmt).toLocaleString(undefined, {maximumFractionDigits: 0}); 
                     const price = parseFloat(attr.price_in_usd).toPrecision(5);
                     
-                    // GeckoTerminal IDs format: "trade_txhash", so we split to isolate the exact blockchain hash
                     const rawHash = trade.id.includes('_') ? trade.id.split('_')[1] : trade.id;
                     const txHash = rawHash.slice(0,4) + '...' + rawHash.slice(-4);
                     
-                    // Calculate realistic time ago
                     const tradeTime = new Date(attr.block_timestamp);
                     const now = new Date();
                     const diffSecs = Math.max(1, Math.floor((now - tradeTime) / 1000));
                     let timeStr = diffSecs < 60 ? `${diffSecs}s ago` : `${Math.floor(diffSecs/60)}m ago`;
 
-                    tradesHtml += `<tr style="opacity:0.9; transition: background 0.2s;">
+                    tradesHtml += `<tr style="opacity:0.6; transition: background 0.2s;">
                       <td style="color:var(--text3)">${timeStr}</td>
                       <td style="color:${isBuy ? 'var(--neon3)' : 'var(--red)'}; font-weight:700">${isBuy ? 'Buy' : 'Sell'}</td>
                       <td style="color:var(--white)">$${usd}</td>
@@ -1851,13 +1853,10 @@ window.switchTerminalTab = function(tab, btnEl) {
                       <td><span style="color:var(--text3); cursor:pointer;" onclick="window.open('https://solscan.io/tx/${rawHash}', '_blank')">⚲</span> ${txHash}</td>
                     </tr>`;
                 });
-                tbody.innerHTML = tradesHtml;
+                
+                // 🔥 CRITICAL FIX: Append to the bottom so we don't delete live WSS ticks!
+                tbody.insertAdjacentHTML('beforeend', tradesHtml);
             })
-            .catch(err => {
-                console.error("Failed to fetch historical trades:", err);
-                const tbody = document.getElementById('term-live-trades');
-                if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--red);">Error fetching blockchain data</td></tr>`;
-            });
     }
     return; // Exit early since we updated the DOM asynchronously
   }
@@ -1881,19 +1880,60 @@ window.switchTerminalTab = function(tab, btnEl) {
      html += `</tbody>`;
   }
   else if (tab === 'holders') {
-     html += `<thead><tr><th>Rank</th><th>Address</th><th>Amount</th><th>Percentage</th><th>Value (USD)</th></tr></thead><tbody>`;
-     for(let i=1; i<=10; i++) {
-       const pct = (10 / i).toFixed(2);
-       const isContract = i === 1;
-       html += `<tr>
-         <td style="color:var(--text3)">${i}</td>
-         <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${isContract ? 'Raydium Authority' : Utils.rndHex(4)+'...'+Utils.rndHex(4)} ${isContract ? '<span class="badge badge-blue" style="font-size:8px;padding:2px 4px">Contract</span>' : ''}</td>
-         <td>${(1000000000 * (pct/100)).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
-         <td><div style="display:flex;align-items:center;gap:6px"><div style="width:40px;height:4px;background:var(--bg3);border-radius:2px"><div style="width:${pct}%;height:100%;background:${isContract?'var(--neon2)':'var(--neon)'};border-radius:2px"></div></div>${pct}%</div></td>
-         <td style="color:var(--text2)">$${(28800 * (pct/100)).toFixed(2)}</td>
-       </tr>`;
-     }
+     html += `<thead><tr><th>Rank</th><th>Address</th><th>Amount</th><th>Percentage</th></tr></thead><tbody id="term-holders">`;
+     html += `<tr><td colspan="4" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Scanning Wallets on Solana...</td></tr>`;
      html += `</tbody>`;
+     container.innerHTML = html;
+
+     // Grab the actual token mint address from our terminal cache
+     const currentToken = window.terminalCache?.find(t => t.pairAddress === window.currentPairAddress);
+     const mintAddress = currentToken ? currentToken.address : null;
+
+     if (mintAddress) {
+         // Use your Helius RPC to get the true top holders
+         fetch(`https://mainnet.helius-rpc.com/?api-key=3637ceed-59ac-465a-9a98-ebc048da759f`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({
+                 jsonrpc: "2.0", id: 1,
+                 method: "getTokenLargestAccounts",
+                 params: [mintAddress]
+             })
+         })
+         .then(res => res.json())
+         .then(data => {
+             const tbody = document.getElementById('term-holders');
+             if (!tbody) return;
+
+             if (!data.result || !data.result.value) {
+                 tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--red);">Failed to fetch holders</td></tr>`;
+                 return;
+             }
+
+             let holdersHtml = '';
+             // Most meme coins have a 1 Billion supply. We use this to calculate percentages.
+             const assumedSupply = 1000000000; 
+
+             data.result.value.slice(0, 10).forEach((account, index) => {
+                 const amount = account.uiAmount || 0;
+                 const pct = ((amount / assumedSupply) * 100).toFixed(2);
+                 const isContract = index === 0; // Usually the highest holder is the Raydium Pool
+                 
+                 // Fallback display if supply is weird
+                 const displayPct = pct > 100 ? '>99.00' : pct; 
+
+                 holdersHtml += `<tr>
+                   <td style="color:var(--text3)">${index + 1}</td>
+                   <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${isContract ? 'Raydium Authority' : Utils.rndHex(4)+'...'+Utils.rndHex(4)} ${isContract ? '<span class="badge badge-blue" style="font-size:8px;padding:2px 4px">Contract</span>' : ''}</td>
+                   <td>${amount.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                   <td><div style="display:flex;align-items:center;gap:6px"><div style="width:40px;height:4px;background:var(--bg3);border-radius:2px"><div style="width:${Math.min(displayPct, 100)}%;height:100%;background:${isContract?'var(--neon2)':'var(--neon)'};border-radius:2px"></div></div>${displayPct}%</div></td>
+                 </tr>`;
+             });
+             tbody.innerHTML = holdersHtml;
+         })
+         .catch(err => console.error("Holders fetch error:", err));
+     }
+     return;
   }
   else if (tab === 'topTraders') {
     html += `<thead><tr><th>Rank</th><th>Address</th><th>Balance</th><th>Bought (Avg MC)</th><th>Sold (Avg MC)</th><th>R. PnL ⇅</th><th>Funded By</th></tr></thead><tbody>`;
