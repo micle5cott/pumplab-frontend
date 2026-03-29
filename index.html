@@ -2364,13 +2364,31 @@ window.initChart = async function() {
   const chartHeight = rect.height || container.clientHeight || 300; 
 
   const chart = LightweightCharts.createChart(container, {
-    width: chartWidth,
-    height: chartHeight,
-    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
-    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
-    crosshair: { mode: 0 },
-    timeScale: { timeVisible: true, secondsVisible: true }
-  });
+      width: chartWidth,
+      height: chartHeight,
+      layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
+      grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+      crosshair: { mode: 0 },
+      
+      // 🔥 EXPLICITLY UNLOCK ALL MOUSE & TOUCH CONTROLS
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
+      timeScale: { 
+        timeVisible: true, 
+        secondsVisible: true,
+        rightOffset: 15, // Adds breathing room on the right side
+        shiftVisibleRangeOnNewBar: true // Auto-scrolls with the live timeline
+      }
+    });
   container.chartInstance = chart;
 
   // 🔥 NATIVE HIGH-PRECISION FORMATTER FOR THE Y-AXIS
