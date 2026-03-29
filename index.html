@@ -859,10 +859,10 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
               <div class="up" style="font-size:13px;font-weight:700">↑ +142.3%</div>
             </div>
             <div style="display:flex;gap:4px">
-              <button class="slip-btn" onclick="setChartPeriod(this)">10S</button>
-              <button class="slip-btn active" onclick="setChartPeriod(this)">5M</button>
-              <button class="slip-btn" onclick="setChartPeriod(this)">1H</button>
-              <button class="slip-btn" onclick="setChartPeriod(this)">1D</button>
+              <button class="slip-btn active" onclick="window.setChartPeriod(this, 'minute', 1)">1M (Live)</button>
+              <button class="slip-btn" onclick="window.setChartPeriod(this, 'minute', 5)">5M</button>
+              <button class="slip-btn" onclick="window.setChartPeriod(this, 'hour', 1)">1H</button>
+              <button class="slip-btn" onclick="window.setChartPeriod(this, 'day', 1)">1D</button>
               <button class="slip-btn" style="color: #a78bfa; border-color: rgba(124,58,237,0.3)" onclick="window.showToast('Lorentzian & N-W Envelopes Toggled', 'success')">ƒ(x)</button>
             </div>
           </div>
@@ -2191,14 +2191,36 @@ window.fetchTerminalData = async function() {
 window.updateLiveChartTick = function(livePrice) {
     if (!window.globalCandleSeries || !window.currentLiveCandle) return;
 
-    // We are updating the "Close", "High", and "Low" of the current minute's candle
-    let candle = window.currentLiveCandle;
-    candle.close = livePrice;
+    // Get the current time in seconds
+    const now = Math.floor(Date.now() / 1000);
     
-    if (livePrice > candle.high) candle.high = livePrice;
-    if (livePrice < candle.low) candle.low = livePrice;
+    // Determine the length of the candle (e.g., 1 minute = 60 seconds)
+    const aggregateSeconds = (window.currentChartAggregate || 1) * 60; 
+    
+    // Calculate the mathematical start of the current time bucket
+    const currentBucket = Math.floor(now / aggregateSeconds) * aggregateSeconds;
+    
+    let candle = window.currentLiveCandle;
 
-    // Push the update to the TradingView canvas
+    // Check if the real-world time has crossed into a new candle period
+    if (currentBucket > candle.time) {
+        // Time rolled over! Spawn a brand new candle.
+        candle = {
+            time: currentBucket,
+            open: candle.close, // Open at the exact price the last candle closed at
+            high: livePrice,
+            low: livePrice,
+            close: livePrice
+        };
+        window.currentLiveCandle = candle;
+    } else {
+        // We are still in the same minute. Update the wicks of the current candle.
+        candle.close = livePrice;
+        if (livePrice > candle.high) candle.high = livePrice;
+        if (livePrice < candle.low) candle.low = livePrice;
+    }
+
+    // Push the tick directly to the TradingView canvas
     window.globalCandleSeries.update(candle);
 };
 
@@ -2355,7 +2377,7 @@ function renderStaticComponents() {
     // 🔥 FETCH REAL DATA FROM GECKOTERMINAL
     try {
       const timeFrame = window.currentChartTimeframe || 'minute';
-      const aggregate = window.currentChartAggregate || 5; // Default to 5m candles
+      const aggregate = window.currentChartAggregate || 1; // 🔥 Default to 1m candles for max speed
       
       const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/ohlcv/${timeFrame}?aggregate=${aggregate}&limit=100`;
       
