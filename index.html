@@ -2373,24 +2373,25 @@ window.initChart = async function() {
   });
   container.chartInstance = chart;
 
-  // 🔥 OVERRIDE MIN-MOVE TO SUPPORT 10 DECIMALS
+  // 🔥 NATIVE HIGH-PRECISION FORMATTER FOR THE Y-AXIS
   const candleSeries = chart.addCandlestickSeries({
     upColor: '#10b981', downColor: '#ef4444', borderVisible: false,
     wickUpColor: '#10b981', wickDownColor: '#ef4444',
     priceFormat: {
-        type: 'custom',
-        minMove: 0.0000000001, 
-        formatter: window.formatMicroPrice
+        type: 'price',
+        precision: 8,
+        minMove: 0.00000001 
     }
   });
 
   const upperEnvelope = chart.addLineSeries({ 
     color: 'rgba(124,58,237,0.5)', lineWidth: 1, crosshairMarkerVisible: false,
-    priceFormat: { type: 'custom', minMove: 0.0000000001, formatter: window.formatMicroPrice }
+    priceFormat: { type: 'price', precision: 8, minMove: 0.00000001 }
   });
+  
   const lowerEnvelope = chart.addLineSeries({ 
     color: 'rgba(6,182,212,0.5)', lineWidth: 1, crosshairMarkerVisible: false,
-    priceFormat: { type: 'custom', minMove: 0.0000000001, formatter: window.formatMicroPrice }
+    priceFormat: { type: 'price', precision: 8, minMove: 0.00000001 }
   });
 
   // Helper to sync both UI headers instantly
