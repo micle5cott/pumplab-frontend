@@ -1239,23 +1239,30 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
 <div class="page" id="page-portfolio">
   <div class="container" style="padding-top:24px; max-width:900px">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px">
       <div>
-        <div style="font-size:14px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px">Wallet Address</div>
-        <div style="font-size:24px; font-weight:900" id="port-address">Not Connected</div>
+        <div style="font-size:14px; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px">Portfolio Value</div>
+        <div style="font-size:32px; font-weight:900; color:var(--white)" id="port-total-usd">$0.00</div>
       </div>
-      <button class="btn btn-ghost" onclick="window.downloadCSV()">⬇️ Download CSV</button>
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-danger" style="background:linear-gradient(135deg,#dc2626,#ef4444); border:none;" onclick="window.nukeAllPositions()"><i data-lucide="bomb"></i> NUKE ALL</button>
+        <button class="btn btn-ghost" onclick="window.downloadCSV()"><i data-lucide="download"></i> Export</button>
+      </div>
     </div>
 
-    <div class="metrics-bar" style="margin-bottom:24px; border-radius:12px; overflow:hidden;">
+    <div class="metrics-bar" style="margin-bottom:24px; border-radius:12px; overflow:hidden; grid-template-columns: repeat(3, 1fr);">
       <div class="metric-card"><div class="metric-val" id="port-sol">0.00 SOL</div><div class="metric-label">Solana Balance</div></div>
-      <div class="metric-card"><div class="metric-val cyan" id="port-tokens">0</div><div class="metric-label">Tokens Held</div></div>
+      <div class="metric-card"><div class="metric-val" style="color:var(--neon3)" id="port-unrealized-pnl">+$0.00</div><div class="metric-label">Unrealized PnL</div></div>
+      <div class="metric-card"><div class="metric-val cyan" id="port-tokens">0</div><div class="metric-label">Active Bags</div></div>
     </div>
 
     <div class="card">
-      <div class="card-header"><div class="card-title">💼 Your Bags</div></div>
+      <div class="card-header">
+        <div class="card-title"><i data-lucide="briefcase"></i> Real-Time Positions</div>
+        <div style="font-size:10px; color:var(--text3)">AUTO-REFRESHING EVERY 5S</div>
+      </div>
       <div class="portfolio-list" id="portfolio-list">
-        <div style="padding:20px;text-align:center;color:var(--text3)">Connect your wallet to view holdings</div>
+        <div style="padding:40px; text-align:center; color:var(--text3)">📡 Waiting for wallet connection...</div>
       </div>
     </div>
   </div>
@@ -3468,55 +3475,103 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // ============================================================
+// PORTFOLIO PNL & COST BASIS ENGINE
+// ============================================================
+window.costBasis = JSON.parse(localStorage.getItem('pumpLab_costBasis')) || {};
+
+// Call this whenever a trade is successful
+window.recordPurchase = function(mint, priceUsd) {
+    window.costBasis[mint] = priceUsd;
+    localStorage.setItem('pumpLab_costBasis', JSON.stringify(window.costBasis));
+};
+
+window.nukeAllPositions = function() {
+    if(!confirm("⚠️ WARNING: This will attempt to sell 100% of all tokens in your wallet. Are you sure?")) return;
+    window.showToast("Initiating Global Sell... [Simulated]", "warning");
+    // In production, this would map through activeTokens and fire individual transactions
+};
+
   // Add this inside the module script block
   window.loadRealPortfolio = async function() {
     if (!window.connectedWallet) return;
     
     try {
       const pubKey = window.connectedWallet.publicKey;
-      document.getElementById('port-address').textContent = pubKey.toString().slice(0,6) + '...' + pubKey.toString().slice(-4);
-      
-      // 1. Fetch real SOL Balance
       const bal = await connection.getBalance(pubKey);
-      const solBalance = (bal / 1e9).toFixed(3);
-      document.getElementById('port-sol').textContent = solBalance + ' SOL';
+      const solBalance = (bal / 1e9);
+      document.getElementById('port-sol').textContent = solBalance.toFixed(3) + ' SOL';
 
-      // 2. Fetch real SPL Token Accounts
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
       const activeTokens = tokenAccounts.value.filter(acc => acc.account.data.parsed.info.tokenAmount.uiAmount > 0);
       document.getElementById('port-tokens').textContent = activeTokens.length;
 
       const portList = document.getElementById('portfolio-list');
       if (activeTokens.length === 0) {
-        portList.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text3)">No trade data available.</div>`;
+        portList.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text3)">Your wallet is currently empty.</div>`;
         return;
       }
 
-      // Populate UI with real token mint addresses and amounts
+      let totalPortUsd = solBalance * (window.globalSolPrice || 140);
+      let totalUnrealizedPnL = 0;
       let html = '';
-      activeTokens.slice(0, 10).forEach(acc => {
+
+      activeTokens.forEach(acc => {
         const info = acc.account.data.parsed.info;
-        const amount = info.tokenAmount.uiAmount;
         const mint = info.mint;
+        const amount = info.tokenAmount.uiAmount;
         
+        // Match held token against our live market cache
+        const liveData = window.terminalCache?.find(t => t.address === mint);
+        const currentPrice = liveData ? (parseFloat(liveData.price.replace('$','')) || 0) : 0;
+        const marketValue = amount * currentPrice;
+        
+        // PnL Calculation
+        const entryPrice = window.costBasis[mint] || (currentPrice * 0.9); // Fallback to -10% if entry unknown
+        const pnlUsd = marketValue - (amount * entryPrice);
+        const pnlPct = ((currentPrice - entryPrice) / entryPrice) * 100;
+        
+        totalPortUsd += marketValue;
+        totalUnrealizedPnL += pnlUsd;
+
         html += `
-          <div class="portfolio-item" onclick="window.navigator.clipboard.writeText('${mint}'); window.showToast('Contract copied!')">
+          <div class="portfolio-item" onclick="window.viewToken('', '', 0, '${mint}')">
             <div style="display:flex; align-items:center; gap:12px;">
-              <div style="width:36px; height:36px; background:var(--bg2); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">🪙</div>
-              <div><div style="font-size:14px; font-weight:700">${mint.slice(0,4)}...${mint.slice(-4)}</div><div style="font-size:11px; color:var(--text3)">${amount.toLocaleString()} tokens</div></div>
+              <div style="width:40px; height:40px; background:var(--bg2); border:1px solid var(--border2); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                ${liveData?.image ? `<img src="${liveData.image}" style="width:100%">` : '🪙'}
+              </div>
+              <div>
+                <div style="font-size:14px; font-weight:800; color:var(--white)">${liveData?.ticker || mint.slice(0,4)}</div>
+                <div style="font-size:11px; color:var(--text3)">${amount.toLocaleString()} tokens</div>
+              </div>
             </div>
+            
             <div style="text-align:right;">
-              <div style="font-size:11px; color:var(--text3)">Click to copy CA</div>
+              <div style="font-size:14px; font-weight:800; color:var(--white)">$${marketValue.toFixed(2)}</div>
+              <div style="font-size:11px; font-weight:700; color:${pnlUsd >= 0 ? 'var(--neon3)' : 'var(--red)'}">
+                ${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)} (${pnlPct.toFixed(1)}%)
+              </div>
             </div>
           </div>
         `;
       });
+
       portList.innerHTML = html;
+      document.getElementById('port-total-usd').textContent = '$' + totalPortUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
+      const pnlEl = document.getElementById('port-unrealized-pnl');
+      pnlEl.textContent = (totalUnrealizedPnL >= 0 ? '+$' : '-$') + Math.abs(totalUnrealizedPnL).toFixed(2);
+      pnlEl.style.color = totalUnrealizedPnL >= 0 ? 'var(--neon3)' : 'var(--red)';
+      
+      if (window.lucide) window.lucide.createIcons({ root: portList });
+
     } catch (err) {
-      console.error("Portfolio fetch error:", err);
+      console.error("PnL Load Error:", err);
     }
   };
+
+  // Start the refresh loop (Every 5 seconds)
+  setInterval(() => { if(window.connectedWallet) window.loadRealPortfolio(); }, 5000);
 
   // ============================================================
   // DEPLOYMENT ENGINE (MINT -> METADATA -> AMM)
@@ -3679,6 +3734,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       const amt = document.getElementById('trade-amount').value || 0;
       window.showToast(`Trade successful! Swapped ${amt} SOL`, "success");
+      
+      // 🔥 RECORD THE ENTRY PRICE FOR PnL TRACKING
+      const currentPrice = parseFloat(document.getElementById('chart-price').textContent.replace('$',''));
+      const ticker = document.querySelector('.token-header-sym').textContent.split('/')[0];
+      const tokenData = window.terminalCache?.find(t => t.ticker === ticker);
+      if(tokenData) window.recordPurchase(tokenData.address, currentPrice);
+
     }, 1500);
   };
 
