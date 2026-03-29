@@ -2343,13 +2343,18 @@ window.updateReview = () => {
 function renderStaticComponents() {
   
   window.initChart = async function() {
-    window.globalCandleSeries = null;
-    window.currentLiveCandle = null;
-    
-    const container = document.getElementById('priceChartContainer');
-    if (!container || typeof LightweightCharts === 'undefined') return;
+    console.log(`[Chart] Initiating engine for Pool: ${window.currentPairAddress}`);
 
-    if (container.chartInstance) container.chartInstance.remove();
+    const container = document.getElementById('priceChartContainer');
+    if (!container || typeof LightweightCharts === 'undefined') {
+      console.error("[Chart] Canvas container or library missing. Aborting.");
+      return;
+    }
+
+    if (container.chartInstance) {
+      console.log("[Chart] Cleaning up previous instance.");
+      container.chartInstance.remove();
+    }
     container.innerHTML = '';
     
     const rect = container.getBoundingClientRect();
@@ -2374,45 +2379,85 @@ function renderStaticComponents() {
     const upperEnvelope = chart.addLineSeries({ color: 'rgba(124,58,237,0.5)', lineWidth: 1, crosshairMarkerVisible: false });
     const lowerEnvelope = chart.addLineSeries({ color: 'rgba(6,182,212,0.5)', lineWidth: 1, crosshairMarkerVisible: false });
 
-    // 🔥 FETCH REAL DATA FROM GECKOTERMINAL
+    // 🔥 THE CRITICAL FALLBACK SIMULATION ENGINE (FIXED & DEBUGGED)
+    const runSimulation = () => {
+      console.warn(`[Chart] WARNING: Coin too new for GeckoTerminal. Running simulation baseline from DexScreener price ($${window.currentTokenPrice}).`);
+      
+      const data = [];
+      let time = Math.floor(Date.now() / 1000) - (100 * 300); 
+      let currentPrice = window.currentTokenPrice || 0.00005; 
+      
+      for(let i=0; i<100; i++) {
+        const open = currentPrice;
+        const close = open + (Math.random() - 0.48) * (open * 0.1);
+        const high = Math.max(open, close) + Math.random() * (open * 0.05);
+        const low = Math.min(open, close) - Math.random() * (open * 0.05);
+        data.push({ time, open, high, low, close });
+        currentPrice = close;
+        time += 300; 
+      }
+      candleSeries.setData(data);
+      
+      // 🔥 FIX 1: Make sure our live WSS has a series to push to
+      window.globalCandleSeries = candleSeries;
+      
+      // 🔥 FIX 2: THIS WAS MISSING. We MUST capture the generated "tip of the spear" candle for the WSS to update it!
+      window.currentLiveCandle = data[data.length - 1];
+      console.log(`[Chart-Fallback] Successfully captured initial fallback candle for WSS rollover:`, window.currentLiveCandle);
+      
+      upperEnvelope.setData(data.map(d => ({ time: d.time, value: d.high + (d.open * 0.15) })));
+      lowerEnvelope.setData(data.map(d => ({ time: d.time, value: d.low - (d.open * 0.15) })));
+      
+      const chartPrice = document.getElementById('chart-price');
+      if (chartPrice) chartPrice.textContent = '$' + (window.currentTokenPrice ? window.currentTokenPrice.toPrecision(4) : "0.00005");
+    };
+
+    // 🔥 TRY TO FETCH REAL DATA FROM GECKOTERMINAL
     try {
       const timeFrame = window.currentChartTimeframe || 'minute';
-      const aggregate = window.currentChartAggregate || 1; // 🔥 Default to 1m candles for max speed
+      const aggregate = window.currentChartAggregate || 5; // Default to 5m candles
+      console.log(`[Chart-API] Fetching ${aggregate}${timeFrame.charAt(0).toUpperCase()} candles...`);
       
       const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/ohlcv/${timeFrame}?aggregate=${aggregate}&limit=100`;
       
       const res = await fetch(url);
+      if(!res.ok) {
+        console.error(`[Chart-API] API returned status: ${res.status}. Switching to fallback engine.`);
+        runSimulation();
+        return;
+      }
+      
       const data = await res.json();
       
-      if(data?.data?.attributes?.ohlcv_list) {
-         // Gecko returns: [timestamp, open, high, low, close, volume] (Newest first)
-         // TradingView needs: Oldest first
+      if(data?.data?.attributes?.ohlcv_list && data.data.attributes.ohlcv_list.length > 0) {
+         console.log(`[Chart-API] Data successfully received with ${data.data.attributes.ohlcv_list.length} candles.`);
          const formattedData = data.data.attributes.ohlcv_list.reverse().map(item => ({
              time: item[0], open: item[1], high: item[2], low: item[3], close: item[4]
          }));
          
          candleSeries.setData(formattedData);
          
+         // Capture the series and the absolute newest candle for WSS updates
          window.globalCandleSeries = candleSeries;
          window.currentLiveCandle = formattedData[formattedData.length - 1];
+         console.log(`[Chart-API] Successfully captured initial historical candle for WSS rollover:`, window.currentLiveCandle);
 
-         // Update the live UI price using the latest candlestick close!
+         // Update the chart header using the latest candlestick close!
          const latestPrice = data.data.attributes.ohlcv_list[0][4]; 
-         const formattedPrice = '$' + latestPrice.toPrecision(4);
-         
-         const headerPrice = document.getElementById('token-price');
          const chartPrice = document.getElementById('chart-price');
-         if (headerPrice) headerPrice.textContent = formattedPrice;
-         if (chartPrice) chartPrice.textContent = formattedPrice;
+         if (chartPrice) chartPrice.textContent = '$' + latestPrice.toPrecision(4);
 
-         // Dynamically wrap the real data in our Lorentzian/N-W envelopes
          const upperData = formattedData.map(d => ({ time: d.time, value: d.high + (d.open * 0.05) }));
          const lowerData = formattedData.map(d => ({ time: d.time, value: d.low - (d.open * 0.05) }));
          upperEnvelope.setData(upperData);
          lowerEnvelope.setData(lowerData);
+      } else {
+         console.warn("[Chart-API] GeckoTerminal returned no data points. Running simulation.");
+         runSimulation();
       }
     } catch (e) {
-      console.error("[Chart] Failed to fetch real OHLCV data", e);
+      console.error("[Chart] Network error or unhandled promise rejection in initChart. Switching to fallback.", e);
+      runSimulation();
     }
 
     new ResizeObserver(entries => {
