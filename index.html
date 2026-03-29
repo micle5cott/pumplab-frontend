@@ -1427,27 +1427,24 @@ const STATE = {
 window.initStatusBar = function() {
   const fetchSolPrice = async () => {
     try {
-      // 🔥 Upgraded to Jupiter Price API V3 (using the exact SOL Mint Address)
-      const res = await fetch('https://api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112');
+      // 🔥 Swapped to DexScreener to bypass Jupiter's API key requirement
+      const res = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
       const json = await res.json();
       
-      // V3 uses the mint address as the root key, and 'usdPrice' instead of 'price'
-      const solData = json["So11111111111111111111111111111111111111112"];
-      
-      if (solData && solData.usdPrice) {
-        const solPrice = parseFloat(solData.usdPrice);
+      if (json && json.pairs && json.pairs.length > 0) {
+        // Grab the highest liquidity pair's USD price
+        const solPrice = parseFloat(json.pairs[0].priceUsd);
         const priceEl = document.getElementById('status-sol-price');
         
         if (priceEl) {
             priceEl.textContent = '$' + solPrice.toFixed(2);
-            // Flash green to show it updated successfully
             priceEl.style.color = '#10b981'; 
             setTimeout(() => priceEl.style.color = '#14F195', 1000);
         }
         window.globalSolPrice = solPrice;
       }
     } catch (e) {
-      console.error("[Status Bar] Failed to sync SOL price from Jupiter.");
+      console.error("[Status Bar] Failed to sync SOL price.");
     }
   };
 
@@ -1905,6 +1902,11 @@ window.viewToken = function(name, ticker, change, pairAddress) {
 
   // 🔥 START HELIUS WEBSOCKET CONNECTION
   window.startHeliusStream(window.currentPairAddress, safeTicker);
+  
+  // 🔥 POPULATE THE TERMINAL TABLE
+  if (typeof window.renderTopTraders === 'function') {
+      window.renderTopTraders();
+  }
 };
 
 // ============================================================
