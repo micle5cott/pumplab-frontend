@@ -1552,10 +1552,11 @@ window.startHeliusStream = function(poolAddress, ticker) {
         window.isProcessingTx = true;
 
         try {
-            const res = await fetch(`https://api.helius.xyz/v0/transactions/?api-key=${HELIUS_API_KEY}`, {
+            // 🔥 Reroute through your Render proxy to bypass CORS!
+            const res = await fetch(`https://server-js-nu0u.onrender.com/api/parse-tx`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transactions: [targetSignature] })
+                body: JSON.stringify({ signature: targetSignature })
             });
 
             const parsedData = await res.json();
@@ -1590,7 +1591,9 @@ window.startHeliusStream = function(poolAddress, ticker) {
                     window.injectLiveTradeRow(ticker, targetSignature, currentUsdPrice, solAmount > 0.5);
                 }
             }
-        } catch (e) { }
+        } catch (e) { 
+            // Silent catch to keep the engine running
+        }
 
         window.isProcessingTx = false;
     }, 400); 
