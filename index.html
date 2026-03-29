@@ -2105,33 +2105,6 @@ window.startPlatformCounters = function() {
   }, 3000);
 };
 
-window.startPlatformCounters = function() {
-  // Calculate realistic "Tokens Launched" based on time elapsed since inception
-  const startDate = new Date('2024-01-01').getTime();
-  const diffMins = (Date.now() - startDate) / (1000 * 60);
-  let tokensLaunched = Math.floor(diffMins * 0.08); // Steady growth rate
-
-  const launchedEl = document.getElementById('launched');
-  const usersEl = document.getElementById('users');
-  const launchedChgEl = document.getElementById('launched-chg');
-
-  if (launchedEl) launchedEl.textContent = tokensLaunched.toLocaleString();
-  if (launchedChgEl) launchedChgEl.textContent = '+' + Math.floor(Math.random() * 120 + 40) + ' today';
-
-  // Active Users Tick Engine (Updates every 3 seconds)
-  setInterval(() => {
-    const baseUsers = 4250;
-    const users = Math.floor(baseUsers + (Math.random() * 600 - 300));
-    if (usersEl) usersEl.textContent = users.toLocaleString();
-
-    // 2% chance every 3 seconds that a new token is deployed on the network
-    if (Math.random() > 0.98) {
-        tokensLaunched++;
-        if (launchedEl) launchedEl.textContent = tokensLaunched.toLocaleString();
-    }
-  }, 3000);
-};
-
 // ============================================================
 // 2. MARKET CONTROLLER (API & DATA STREAM)
 // ============================================================
