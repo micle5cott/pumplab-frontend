@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://unpkg.com/lucide@latest"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PumpLab — The Most Trusted Meme Coin Launch Platform</title>
 <style>
-  
+
 :root{
   --bg:#06060e;
   --bg2:#0d0d1a;
@@ -23,12 +24,24 @@
   --text2:#94a3b8;
   --text3:#64748b;
   --white:#fff;
-  --radius:14px;
-  --radius2:10px;
-  --shadow:0 8px 32px rgba(0,0,0,0.4);
-  --glow:0 0 24px rgba(124,58,237,0.25);
-  --glow2:0 0 24px rgba(6,182,212,0.2);
+  /* 🔥 SHARPENED BORDERS FOR PRO TERMINAL LOOK */
+  --radius:6px;
+  --radius2:4px;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+  --glow:0 0 16px rgba(124,58,237,0.2);
+  --glow2:0 0 16px rgba(6,182,212,0.2);
 }
+
+/* 🔥 LUCIDE SVG ICON SIZING */
+.lucide { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; display: inline-block; vertical-align: text-bottom; }
+.lucide-sm { width: 14px; height: 14px; stroke-width: 2; }
+.lucide-xs { width: 12px; height: 12px; stroke-width: 2; }
+
+/* Force standard buttons to have sharper corners */
+.btn { border-radius: 4px; }
+.input { border-radius: 4px; }
+.card { border-radius: 6px; }
+
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh;overflow-x:hidden}
@@ -480,29 +493,28 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <nav class="nav">
   <div class="nav-logo" onclick="showPage('home')">
-    <div class="nav-logo-icon">🚀</div>
+    <div class="nav-logo-icon" style="border-radius: 4px;"><i data-lucide="hexagon"></i></div>
     <div class="nav-logo-text">PumpLab</div>
   </div>
  <div class="nav-links">
     <div class="nav-link active" onclick="showPage('home');setActive(this)">Home</div>
-    <div class="nav-link" onclick="showPage('launch');setActive(this)">Launch</div>
-    <div class="nav-link" onclick="showPage('token');setActive(this)">Trade</div>
-    <div class="nav-link" onclick="showPage('trenches');setActive(this)">Trenches</div>
+    <div class="nav-link" onclick="showPage('launch');setActive(this)">Deploy Contract</div>
+    <div class="nav-link" onclick="showPage('token');setActive(this)">Terminal</div>
+    <div class="nav-link" onclick="showPage('trenches');setActive(this)">Network Feed</div>
     <div class="nav-link" onclick="showPage('security');setActive(this)">Security</div>
     <div class="nav-link" onclick="showPage('portfolio');setActive(this)">Portfolio</div>
-    <div class="nav-link" onclick="showPage('social');setActive(this)">X Tracker</div>
   </div>
   <div style="display:flex; gap:8px; align-items:center">
     <div class="search-wrapper">
-      <span class="search-icon">🔍</span>
-      <input type="text" class="search-input" id="global-search" placeholder="Search token or CA..." oninput="handleSearch(this.value)" onblur="setTimeout(()=>document.getElementById('search-res').style.display='none',200)">
+      <span class="search-icon"><i data-lucide="search" class="lucide-sm"></i></span>
+      <input type="text" class="search-input" id="global-search" placeholder="Search CA..." oninput="handleSearch(this.value)" onblur="setTimeout(()=>document.getElementById('search-res').style.display='none',200)">
       <div class="search-results" id="search-res"></div>
     </div>
     
-    <button class="btn btn-ghost btn-sm" onclick="window.openGlobalChatWidget()">💬 Chat</button>
-    <button class="btn btn-ghost btn-sm" id="wallet-btn" onclick="showModal('walletModal')">🔌 Connect</button>
+    <button class="btn btn-ghost btn-sm" onclick="window.openGlobalChatWidget()"><i data-lucide="message-square" class="lucide-sm"></i> Chat</button>
+    <button class="btn btn-ghost btn-sm" id="wallet-btn" onclick="showModal('walletModal')"><i data-lucide="wallet" class="lucide-sm"></i> Connect</button>
   </div>
-  </nav>
+</nav>
 
 <!-- MOBILE NAV -->
 <div class="mobile-nav">
@@ -1287,7 +1299,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
 <div class="status-bar">
   <div class="status-left">
-    <div class="status-item"><span class="live-dot" style="width:6px;height:6px;box-shadow:none;"></span> Mainnet Beta</div>
+    <div class="status-item"><i data-lucide="activity" class="lucide-xs" style="color:var(--neon3)"></i> Mainnet Beta</div>
     <div class="status-item">TPS: <span class="status-val" id="status-tps">2,842</span></div>
     <div class="status-item">Ping: <span class="status-val" id="status-ping">42ms</span></div>
   </div>
@@ -1298,7 +1310,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   
   <div class="status-right">
     <div class="status-item">RPC: <button class="btn-status" onclick="window.showToast('RPC Switched to Helius Premium', 'success')">Helius</button></div>
-    <div class="status-item">Priority Fee: <button class="btn-status" style="color:var(--neon4); border-color:rgba(245,158,11,0.3)" onclick="window.showToast('Priority Fee set to Turbo (0.005 SOL)', 'warning')">⚡ Turbo</button></div>
+    <div class="status-item">Priority Fee: <button class="btn-status" style="color:var(--neon4); border-color:rgba(245,158,11,0.3)" onclick="window.showToast('Priority Fee set to Turbo (0.005 SOL)', 'warning')"><i data-lucide="zap" class="lucide-xs"></i> Turbo</button></div>
   </div>
 </div>
 
