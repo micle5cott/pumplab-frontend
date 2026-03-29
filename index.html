@@ -910,30 +910,15 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
         <div class="term-card">
           <div class="term-tabs">
-            <button class="term-tab">Trades</button>
-            <button class="term-tab">Positions</button>
-            <button class="term-tab">Orders</button>
-            <button class="term-tab">Holders (312)</button>
-            <button class="term-tab active">Top Traders</button>
-            <button class="term-tab">Dev Tokens (186)</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('trades', this)">Trades</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('positions', this)">Positions</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('orders', this)">Orders</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('holders', this)">Holders (312)</button>
+            <button class="term-tab active" onclick="window.switchTerminalTab('topTraders', this)">Top Traders</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('dev', this)">Dev Tokens (186)</button>
           </div>
-          <div class="term-table-wrapper">
-            <table class="term-table">
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Address</th>
-                  <th>Balance</th>
-                  <th>Bought (Avg MC)</th>
-                  <th>Sold (Avg MC)</th>
-                  <th>R. PnL ⇅</th>
-                  <th>Funded By</th>
-                </tr>
-              </thead>
-              <tbody id="top-traders-feed">
-                </tbody>
-            </table>
-          </div>
+          <div class="term-table-wrapper" id="terminal-table-container">
+            </div>
         </div>
 
       </div>
@@ -1559,32 +1544,35 @@ window.startHeliusStream = function(poolAddress, ticker) {
     }, 400); 
 };
 
-window.injectLiveTradeRow = function(ticker, signature) {
-    const tradesFeed = document.getElementById('trades-feed');
-    if (!tradesFeed) return;
+window.injectLiveTradeRow = function(ticker, signature, currentUsdPrice) {
+    // Only inject if the user is actively looking at the Trades tab!
+    const tradesFeed = document.getElementById('term-live-trades');
+    if (!tradesFeed) return; 
     
     const isBuy = Math.random() > 0.5; 
-    const shortSig = signature.slice(0, 6) + '...' + signature.slice(-4);
+    const shortSig = signature.slice(0, 4) + '...' + signature.slice(-4);
+    
+    // Simulate USD value / volume for the demo
+    const usd = (Math.random() * 2000 + 10).toFixed(2);
+    const amt = (Math.random() * 500000 + 1000).toFixed(0);
+    const safePrice = currentUsdPrice ? currentUsdPrice.toPrecision(5) : '0.0000';
     
     const tradeHtml = `
-      <div class="feed-item" style="animation: slideIn 0.3s ease forwards; background: var(--glass2);">
-        <div class="token-avatar" style="background:${isBuy ? 'rgba(16,185,129,.15)' : 'rgba(239,68,68,.1)'}">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isBuy ? '#34d399' : '#f87171'}" stroke-width="2"><path d="${isBuy ? 'M3 17l6-6 4 4 8-8 M17 7h4v4' : 'M3 7l6 6 4-4 8 8 M17 17h4v-4'}"/></svg>
-        </div>
-        <div class="feed-info">
-            <div class="feed-name">${isBuy ? 'BUY' : 'SELL'} ${ticker}</div>
-            <div class="feed-meta">Sig: ${shortSig}</div>
-        </div>
-        <div class="feed-value">
-            <div class="feed-price ${isBuy ? 'up' : 'down'}">Live Ping</div>
-            <div class="feed-change" style="color:var(--text3)">Just now</div>
-        </div>
-      </div>
+      <tr style="animation: fadeUp 0.3s ease forwards; background: var(--glass2);">
+        <td style="color:var(--text3)">Just now</td>
+        <td style="color:${isBuy ? 'var(--neon3)' : 'var(--red)'}; font-weight:700">${isBuy ? 'Buy' : 'Sell'}</td>
+        <td style="color:var(--white)">$${usd}</td>
+        <td>${amt}</td>
+        <td style="color:var(--text2)">$${safePrice}</td>
+        <td><span style="color:var(--text3); cursor:pointer;">⚲</span> ${shortSig}</td>
+      </tr>
     `;
     
     tradesFeed.insertAdjacentHTML('afterbegin', tradeHtml);
     setTimeout(() => tradesFeed.firstElementChild.style.background = 'transparent', 500);
-    if (tradesFeed.children.length > 15) tradesFeed.lastElementChild.remove();
+    
+    // Keep the table clean so the DOM doesn't crash from too many rows
+    if (tradesFeed.children.length > 20) tradesFeed.lastElementChild.remove();
 };
 
 window.initAds = function() {
@@ -1797,25 +1785,82 @@ const MarketController = {
 };
 
 // ============================================================
-// TERMINAL TABLE GENERATOR
+// TERMINAL TABLE ENGINE
 // ============================================================
-window.renderTopTraders = function() {
-  const tbody = document.getElementById('top-traders-feed');
-  if (!tbody) return;
-  
-  let html = '';
-  // Generate 6 realistic looking trader rows
-  for(let i=1; i<=6; i++) {
-    const address = Utils.rndHex(4) + '...' + Utils.rndHex(3);
-    const balance = (Math.random() * 30 + 5).toFixed(2);
-    const boughtUsd = (Math.random() * 400 + 100).toFixed(1);
-    const boughtMc = (Math.random() * 5 + 1).toFixed(2);
-    const soldUsd = (Math.random() * 900 + 200).toFixed(1);
-    const soldMc = (Math.random() * 20 + 5).toFixed(1);
-    const pnl = (Math.random() * 500 + 100).toFixed(2);
-    
-    html += `
-      <tr>
+window.switchTerminalTab = function(tab, btnEl) {
+  if (btnEl) {
+    document.querySelectorAll('.term-tab').forEach(b => b.classList.remove('active'));
+    btnEl.classList.add('active');
+  }
+
+  const container = document.getElementById('terminal-table-container');
+  if (!container) return;
+
+  let html = '<table class="term-table">';
+
+  if (tab === 'trades') {
+    html += `<thead><tr><th>Time</th><th>Type</th><th>USD</th><th>Amount</th><th>Price</th><th>Maker</th></tr></thead><tbody id="term-live-trades">`;
+    // Seed with a few recent trades
+    for(let i=0; i<8; i++) {
+      const isBuy = Math.random() > 0.5;
+      const usd = (Math.random() * 5000 + 10).toFixed(2);
+      const amt = (Math.random() * 1000000 + 1000).toFixed(0);
+      html += `<tr style="opacity:0.7">
+        <td style="color:var(--text3)">${Math.floor(Math.random()*59)}s ago</td>
+        <td style="color:${isBuy ? 'var(--neon3)' : 'var(--red)'}; font-weight:700">${isBuy ? 'Buy' : 'Sell'}</td>
+        <td style="color:var(--white)">$${usd}</td>
+        <td>${amt}</td>
+        <td style="color:var(--text2)">$0.000${Math.floor(Math.random()*9999)}</td>
+        <td><span style="color:var(--text3); cursor:pointer;">⚲</span> ${Utils.rndHex(4)}...${Utils.rndHex(4)}</td>
+      </tr>`;
+    }
+    html += `</tbody>`;
+  } 
+  else if (tab === 'positions') {
+     html += `<thead><tr><th>Token</th><th>Size</th><th>Avg Entry</th><th>Current Price</th><th>Value</th><th>Unrealized PnL</th></tr></thead><tbody>`;
+     const pnl = (Math.random() * 200 - 50).toFixed(2);
+     const isProfit = pnl >= 0;
+     html += `<tr>
+       <td><div style="display:flex;align-items:center;gap:6px"><div style="width:16px;height:16px;border-radius:50%;background:var(--neon)"></div><span style="font-weight:700">Current</span></div></td>
+       <td>4,250,000</td>
+       <td style="color:var(--text2)">$0.00004102</td>
+       <td style="color:var(--text2)">$0.00004638</td>
+       <td style="color:var(--white);font-weight:700">$197.11</td>
+       <td style="color:${isProfit ? 'var(--neon3)' : 'var(--red)'}">${isProfit?'+':''}$${pnl} (${isProfit?'+':''}${(pnl/100).toFixed(2)}%)</td>
+     </tr>`;
+     html += `</tbody>`;
+  }
+  else if (tab === 'orders') {
+     html += `<thead><tr><th>Time</th><th>Type</th><th>Price</th><th>Amount</th><th>Filled</th><th>Status</th></tr></thead><tbody>`;
+     html += `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:32px 0">No open limit orders</td></tr>`;
+     html += `</tbody>`;
+  }
+  else if (tab === 'holders') {
+     html += `<thead><tr><th>Rank</th><th>Address</th><th>Amount</th><th>Percentage</th><th>Value (USD)</th></tr></thead><tbody>`;
+     for(let i=1; i<=10; i++) {
+       const pct = (10 / i).toFixed(2);
+       const isContract = i === 1;
+       html += `<tr>
+         <td style="color:var(--text3)">${i}</td>
+         <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${isContract ? 'Raydium Authority' : Utils.rndHex(4)+'...'+Utils.rndHex(4)} ${isContract ? '<span class="badge badge-blue" style="font-size:8px;padding:2px 4px">Contract</span>' : ''}</td>
+         <td>${(1000000000 * (pct/100)).toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+         <td><div style="display:flex;align-items:center;gap:6px"><div style="width:40px;height:4px;background:var(--bg3);border-radius:2px"><div style="width:${pct}%;height:100%;background:${isContract?'var(--neon2)':'var(--neon)'};border-radius:2px"></div></div>${pct}%</div></td>
+         <td style="color:var(--text2)">$${(28800 * (pct/100)).toFixed(2)}</td>
+       </tr>`;
+     }
+     html += `</tbody>`;
+  }
+  else if (tab === 'topTraders') {
+    html += `<thead><tr><th>Rank</th><th>Address</th><th>Balance</th><th>Bought (Avg MC)</th><th>Sold (Avg MC)</th><th>R. PnL ⇅</th><th>Funded By</th></tr></thead><tbody>`;
+    for(let i=1; i<=6; i++) {
+      const address = Utils.rndHex(4) + '...' + Utils.rndHex(3);
+      const balance = (Math.random() * 30 + 5).toFixed(2);
+      const boughtUsd = (Math.random() * 400 + 100).toFixed(1);
+      const boughtMc = (Math.random() * 5 + 1).toFixed(2);
+      const soldUsd = (Math.random() * 900 + 200).toFixed(1);
+      const soldMc = (Math.random() * 20 + 5).toFixed(1);
+      const pnl = (Math.random() * 500 + 100).toFixed(2);
+      html += `<tr>
         <td style="color:var(--text3)">${i}</td>
         <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${address}</td>
         <td style="color:#a78bfa">${balance}</td>
@@ -1823,10 +1868,38 @@ window.renderTopTraders = function() {
         <td><div style="color:var(--red)">$${soldUsd}</div><div style="font-size:10px;color:var(--text3)">${soldMc}K</div></td>
         <td style="color:var(--neon3)">+$${pnl}</td>
         <td><span class="badge badge-amber" style="font-size:9px; background:transparent; border-color:var(--neon4)">Binance</span></td>
-      </tr>
-    `;
+      </tr>`;
+    }
+    html += `</tbody>`;
   }
-  tbody.innerHTML = html;
+  else if (tab === 'dev') {
+     html += `<thead><tr><th>Wallet</th><th>Action</th><th>Amount</th><th>Time</th><th>Tx Hash</th></tr></thead><tbody>`;
+     html += `<tr>
+        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> Dev (deployer)</td>
+        <td><span class="badge badge-blue" style="background:transparent;border-color:var(--neon2);color:var(--neon2)">Minted</span></td>
+        <td>1,000,000,000</td>
+        <td style="color:var(--text3)">4h ago</td>
+        <td style="color:var(--text3);font-family:monospace">5zYg...2R1a</td>
+     </tr>
+     <tr>
+        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> Dev (deployer)</td>
+        <td><span class="badge" style="background:transparent;border-color:var(--text3);color:var(--text2)">Transfer (LP)</span></td>
+        <td>800,000,000</td>
+        <td style="color:var(--text3)">4h ago</td>
+        <td style="color:var(--text3);font-family:monospace">9aT1...8bMx</td>
+     </tr>
+     <tr>
+        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> Dev (deployer)</td>
+        <td><span class="badge badge-red" style="background:transparent;border-color:var(--red);color:var(--red)">Sold</span></td>
+        <td>14,000,000</td>
+        <td style="color:var(--text3)">3h 12m ago</td>
+        <td style="color:var(--text3);font-family:monospace">2xPq...0zWt</td>
+     </tr>`;
+     html += `</tbody>`;
+  }
+
+  html += '</table>';
+  container.innerHTML = html;
 };
 
 // ============================================================
