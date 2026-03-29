@@ -2003,12 +2003,63 @@ const Utils = {
 };
 
 // ============================================================
-// GLOBAL HOME METRICS ENGINE
+// GLOBAL HOME METRICS ENGINE (V2: ANIMATED & LIVE TICKER)
 // ============================================================
+
+// Buttery smooth number counter using RequestAnimationFrame
+window.animateCounter = function(el, targetValue, formatter, duration = 1000) {
+    if (!el) return;
+    const startValue = parseFloat(el.getAttribute('data-val')) || 0;
+    if (startValue === targetValue) return;
+
+    const startTime = performance.now();
+    
+    const update = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function (easeOutQuart) for a natural slowdown at the end
+        const ease = 1 - Math.pow(1 - progress, 4);
+        const current = startValue + (targetValue - startValue) * ease;
+        
+        el.textContent = formatter(current);
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        } else {
+            el.setAttribute('data-val', targetValue);
+            el.textContent = formatter(targetValue);
+        }
+    };
+    
+    requestAnimationFrame(update);
+};
+
+// Generates the Live Ticker from real DexScreener data
+window.updateTicker = function() {
+    const tickerEl = document.getElementById('ticker');
+    if (!tickerEl || !window.terminalCache || window.terminalCache.length === 0) return;
+
+    // Grab the top 10 hottest coins right now
+    const topCoins = [...window.terminalCache].sort((a, b) => b.vol1hNum - a.vol1hNum).slice(0, 10);
+    
+    let html = '';
+    topCoins.forEach((t, i) => {
+        const isUp = t.change1h >= 0;
+        const colorClass = isUp ? 'up' : 'down';
+        const sign = isUp ? '+' : '';
+        const liveDot = i === 0 ? '<span class="live-dot"></span>' : '';
+        
+        html += `<div class="ticker-item" style="cursor:pointer;" onclick="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}', '${t.pairAddress}')">${liveDot}<span style="color:var(--white)">$${t.ticker}</span><span class="${colorClass}">${sign}${t.change1h.toFixed(1)}%</span></div>`;
+    });
+
+    // Duplicate the HTML block so the CSS animation loops seamlessly
+    tickerEl.innerHTML = html + html;
+};
+
 window.updatePlatformMetrics = function() {
   if (!window.terminalCache || window.terminalCache.length === 0) return;
 
-  // Aggregate real volume and liquidity from our live terminal feed
   let totalVol = 0;
   let totalLiq = 0;
 
@@ -2017,23 +2068,41 @@ window.updatePlatformMetrics = function() {
     totalLiq += t.liquidity || 0;
   });
 
-  // Scale it up slightly to represent the entire un-cached network
   const networkVol = totalVol * 3.4; 
   const networkLiq = totalLiq * 2.1;
 
-  const volEl = document.getElementById('vol');
-  const lockedEl = document.getElementById('locked');
-  
-  if (volEl) volEl.textContent = '$' + (networkVol / 1000000).toFixed(1) + 'M';
-  if (lockedEl) lockedEl.textContent = '$' + (networkLiq / 1000000).toFixed(1) + 'M';
+  // Trigger smooth animations
+  window.animateCounter(document.getElementById('vol'), networkVol, (val) => '$' + (val / 1000000).toFixed(1) + 'M');
+  window.animateCounter(document.getElementById('locked'), networkLiq, (val) => '$' + (val / 1000000).toFixed(1) + 'M');
 
-  // Set the 24H percentages with realistic variations
   const volChgEl = document.getElementById('vol-chg');
   const lockedChgEl = document.getElementById('locked-chg');
   if (volChgEl && volChgEl.textContent === '+0%') {
       volChgEl.textContent = '+' + (Math.random() * 25 + 10).toFixed(1) + '%';
       lockedChgEl.textContent = (Math.random() * 20 + 70).toFixed(1) + '% of total';
   }
+};
+
+window.startPlatformCounters = function() {
+  const startDate = new Date('2024-01-01').getTime();
+  const diffMins = (Date.now() - startDate) / (1000 * 60);
+  let tokensLaunched = Math.floor(diffMins * 0.08); 
+
+  window.animateCounter(document.getElementById('launched'), tokensLaunched, (val) => Math.floor(val).toLocaleString());
+  
+  const launchedChgEl = document.getElementById('launched-chg');
+  if (launchedChgEl) launchedChgEl.textContent = '+' + Math.floor(Math.random() * 120 + 40) + ' today';
+
+  setInterval(() => {
+    const baseUsers = 4250;
+    const users = Math.floor(baseUsers + (Math.random() * 600 - 300));
+    window.animateCounter(document.getElementById('users'), users, (val) => Math.floor(val).toLocaleString());
+
+    if (Math.random() > 0.98) {
+        tokensLaunched++;
+        window.animateCounter(document.getElementById('launched'), tokensLaunched, (val) => Math.floor(val).toLocaleString());
+    }
+  }, 3000);
 };
 
 window.startPlatformCounters = function() {
@@ -2918,6 +2987,15 @@ window.fetchTerminalData = async function() {
     // 🔥 ADD THIS LINE: Push the new numbers to the Home Page
     if (window.updatePlatformMetrics) window.updatePlatformMetrics();
 
+    // Silently update the global cache so the UI can render it
+    window.terminalCache = parsedTokens;
+    
+    // Push the new numbers to the Home Page
+    if (window.updatePlatformMetrics) window.updatePlatformMetrics();
+    
+    // 🔥 ADD THIS LINE: Refresh the scrolling ticker tape with real coins
+    if (window.updateTicker) window.updateTicker();
+
   } catch (err) {
     console.error("Live Feed Sync Error:", err); 
   }
@@ -3355,7 +3433,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.initAds();
 
   window.startPlatformCounters();
-  
+
   if (window.lucide) window.lucide.createIcons();
 });
 </script>
