@@ -405,24 +405,60 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 /* SECTION */
 .section{padding:32px 0}
 
-/* RESPONSIVE */
-@media(max-width:768px){
-  .nav-links{display:none}
-  .metrics-bar{grid-template-columns:repeat(2,1fr)}
-  .grid-3{grid-template-columns:1fr}
-  .grid-2{grid-template-columns:1fr}
-  .form-row{grid-template-columns:1fr}
-  .token-layout{grid-template-columns:1fr}
+/* ==================== RESPONSIVE AUTO-FORMATTING ==================== */
+@media(max-width: 1200px) {
+  /* Smaller Laptops: Slightly shrink the right column */
+  .token-layout { grid-template-columns: 1fr 280px; }
+  .nav-logo-text { display: none; } /* Hide text to save header space */
 }
 
-/* NAV MOBILE */
-.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(6,6,14,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);z-index:999;padding:8px 0}
-.mobile-nav-inner{display:flex;justify-content:space-around}
-.mobile-nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;cursor:pointer;color:var(--text3);transition:color .15s}
-.mobile-nav-item.active,.mobile-nav-item:hover{color:#a78bfa}
-.mobile-nav-icon{font-size:18px}
-.mobile-nav-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-@media(max-width:768px){.mobile-nav{display:block}.page{padding-bottom:72px}}
+@media(max-width: 1024px) {
+  /* Tablets: Stack the Bloomberg Layout into a single column */
+  .token-layout { grid-template-columns: 1fr; }
+  .token-data-grid { grid-template-columns: 1fr; }
+  .trenches-layout { grid-template-columns: 1fr; height: auto; }
+  .trench-col { height: 500px; }
+  
+  /* Wrap the chart timeframes so they don't get squished */
+  .chart-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .chart-header > div { flex-wrap: wrap; }
+}
+
+@media(max-width: 768px) {
+  /* Mobile Phones: Condense everything for small screens */
+  .nav { padding: 0 12px; }
+  .nav-links { display: none; }
+  
+  /* Shrink the search bar */
+  .search-input { width: 130px; }
+  .search-input:focus { width: 160px; }
+  
+  /* Stack UI Elements */
+  .metrics-bar { grid-template-columns: repeat(2, 1fr); }
+  .grid-3, .grid-2, .form-row { grid-template-columns: 1fr; }
+  .hero h1 { font-size: clamp(32px, 10vw, 42px); }
+  
+  /* Re-arrange Token Header */
+  .token-header { flex-direction: column; align-items: flex-start; }
+  .token-header > div:last-child { width: 100%; justify-content: space-between; margin-top: 12px; }
+  
+  /* Shrink Security & Performance Grids */
+  .sec-grid { grid-template-columns: repeat(2, 1fr); }
+  .perf-row { grid-template-columns: repeat(2, 1fr); }
+  
+  /* Adjust Chart Height */
+  .chart-canvas { height: 320px; }
+  
+  /* Allow Status Bar to scroll horizontally if needed */
+  .status-bar { font-size: 9px; padding: 0 8px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; gap: 12px; }
+  .status-item { gap: 4px; }
+  
+  /* Fix Floating Chat for Mobile (Prevent off-screen clipping) */
+  .floating-chat { bottom: 80px; left: 16px; width: calc(100vw - 32px); }
+  
+  /* Extra padding so the mobile bottom nav doesn't cover content */
+  body { padding-bottom: 80px; }
+}
 
 /* PROGRESS */
 .progress{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden}
