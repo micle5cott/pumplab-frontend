@@ -1002,11 +1002,11 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:11px; font-weight:700;">
-            <span style="color:var(--text2)">Gas -</span>
+            <span style="color:var(--text2)">Priority Fee -</span>
             <div style="display:flex; gap:8px; align-items:center;">
-              <span style="color:var(--text3)">⛽ 0.003</span>
-              <span style="color:var(--text3)">⛽ 0.004</span>
-              <span style="color:var(--neon3)">⚡ 20%</span>
+              <span style="color:var(--text3)"><i data-lucide="fuel" class="lucide-xs"></i> 0.003</span>
+              <span style="color:var(--text3)"><i data-lucide="fuel" class="lucide-xs"></i> 0.004</span>
+              <span style="color:var(--neon3)"><i data-lucide="zap" class="lucide-xs"></i> 20%</span>
             </div>
           </div>
 
@@ -1867,7 +1867,7 @@ window.switchTerminalTab = function(tab, btnEl) {
 
   if (tab === 'trades') {
     html += `<thead><tr><th>Time</th><th>Type</th><th>USD</th><th>Amount</th><th>Price</th><th>Tx Hash</th></tr></thead><tbody id="term-live-trades">`;
-    html += `<tr id="loading-trades-row"><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;">📡 Extracting On-Chain Trades...</td></tr>`;
+    html += `<tr id="loading-trades-row"><td colspan="6" style="text-align:center; padding: 30px; color: var(--neon2); font-weight:700;"><i data-lucide="loader" class="lucide-sm" style="animation: spin 2s linear infinite;"></i> Fetching on-chain data...`;
     html += `</tbody>`;
     container.innerHTML = html + '</table>';
 
@@ -2111,7 +2111,7 @@ window.switchTerminalTab = function(tab, btnEl) {
                  const amt = raydium.uiAmount.toLocaleString(undefined, {maximumFractionDigits:0});
                  devHtml += `<tr>
                     <td><span class="badge badge-blue">Raydium LP Pool</span></td>
-                    <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${raydium.address.slice(0,6)}...${raydium.address.slice(-4)}</td>
+                    <td><span style="color:var(--text3); cursor:pointer;"><i data-lucide="fingerprint" class="lucide-xs"></i></span> ${raydium.address.slice(0,6)}...${raydium.address.slice(-4)}</td>
                     <td style="color:var(--white); font-weight:700;">${amt}</td>
                     <td><span class="badge badge-green">🔒 Locked Contract</span></td>
                  </tr>`;
@@ -2634,8 +2634,10 @@ window.closeModal = (id, e) => { if(!e || e.target.id === id) document.getElemen
 window.showToast = (msg, type = 'info') => {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${type==='success'?'✅':type==='warning'?'⚠️':'💬'}</span><span>${msg}</span>`;
+  let icon = type === 'success' ? 'check-circle' : type === 'warning' ? 'alert-triangle' : 'info';
+  toast.innerHTML = `<i data-lucide="${icon}" class="lucide-sm"></i> <span>${msg}</span>`;
   document.getElementById('toasts').appendChild(toast);
+  if (window.lucide) window.lucide.createIcons({ root: toast });
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateX(16px)';
@@ -2906,10 +2908,10 @@ window.initChart = async function() {
               </div>
               <div class="trench-row2">
                 <span>${t.age} ago</span> • <span>Liq: $${(liq/1000).toFixed(1)}k</span>
-                <div class="trench-socials" style="margin-left:auto;">
-                  ${hasX ? '<span title="Twitter">𝕏</span>' : ''}
-                  ${hasTg ? '<span title="Telegram">✈️</span>' : ''}
-                  <span title="Website">🌐</span>
+                <div class="trench-socials" style="margin-left:auto; display:flex; gap:6px;">
+                  ${hasX ? '<span title="Twitter"><i data-lucide="twitter" class="lucide-xs"></i></span>' : ''}
+                  ${hasTg ? '<span title="Telegram"><i data-lucide="send" class="lucide-xs"></i></span>' : ''}
+                  <span title="Website"><i data-lucide="globe" class="lucide-xs"></i></span>
                 </div>
               </div>
               <div class="trench-row3">
@@ -2919,7 +2921,7 @@ window.initChart = async function() {
                 <span class="micro-badge ${top10 > 30 ? 'warn' : 'safe'}">Top 10: ${top10}%</span>
               </div>
             </div>
-            <button class="trench-quick-buy" onclick="window.executeSnipe(event, '${t.ticker.replace(/'/g, "\\'")}', 0.5)">⚡ 0.5</button>
+            <button class="trench-quick-buy" onclick="window.executeSnipe(event, '${t.ticker.replace(/'/g, "\\'")}', 0.5)">Buy 0.5</button>
           </div>`;
         generated++;
       });
@@ -2948,6 +2950,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.renderTerminalFeed('hot');
   window.initStatusBar();
   window.initAds();
+  if (window.lucide) window.lucide.createIcons();
 });
 </script>
 
