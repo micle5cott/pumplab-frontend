@@ -321,6 +321,26 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 .token-data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 @media(max-width: 1024px) { .token-data-grid { grid-template-columns: 1fr; } }
 
+/* TERMINAL DATA TABLE */
+.term-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.term-tabs { display: flex; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); overflow-x: auto; }
+.term-tab { padding: 14px 0; font-size: 12px; font-weight: 600; color: var(--text3); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+.term-tab.active { color: var(--white); border-bottom-color: var(--neon); }
+.term-tab:hover:not(.active) { color: var(--text2); }
+.term-table-wrapper { overflow-x: auto; max-height: 350px; }
+.term-table { width: 100%; border-collapse: collapse; text-align: left; }
+.term-table th { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; letter-spacing: 0.5px; }
+.term-table td { font-size: 12px; color: var(--text); padding: 10px 16px; border-bottom: 1px solid var(--border2); white-space: nowrap; font-family: monospace; }
+.term-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+/* SECURITY GRID & PERFORMANCE */
+.sec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sec-box { background: var(--glass); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 4px; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.sec-val { font-size: 14px; font-weight: 800; }
+.sec-label { font-size: 10px; color: var(--text3); }
+.perf-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.perf-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 0; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+
 /* ANIMATIONS */
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 @keyframes pumpGlow{0%,100%{box-shadow:0 0 0 rgba(16,185,129,0)}50%{box-shadow:0 0 20px rgba(16,185,129,.4)}}
@@ -866,14 +886,14 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 
     <!-- MAIN LAYOUT -->
     <div class="token-layout">
-      <!-- LEFT: CHART + TABS -->
-      <div>
-        <!-- CHART -->
-        <div class="chart-area mb-4" style="margin-bottom:16px">
+      
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        
+        <div class="chart-area">
           <div class="chart-header">
             <div style="display:flex;align-items:center;gap:16px">
-              <div style="font-size:22px;font-weight:800" id="chart-price">$0.0000842</div>
-              <div class="up" style="font-size:13px;font-weight:700">↑ +142.3%</div>
+              <div style="font-size:22px;font-weight:800" id="chart-price">$0.00000000</div>
+              <div class="up" style="font-size:13px;font-weight:700">↑ +0.0%</div>
             </div>
             <div style="display:flex;gap:4px">
               <button class="slip-btn active" onclick="window.setChartPeriod(this, 'minute', 1)">1M (Live)</button>
@@ -884,133 +904,107 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
             </div>
           </div>
           <div class="chart-canvas">
-            <div id="priceChartContainer" style="width:100%;height:300px;"></div>
+            <div id="priceChartContainer" style="width:100%;height:400px;"></div>
           </div>
         </div>
 
-        <!-- TABS -->
-        <div class="tabs" id="token-tabs">
-          <div class="tab" onclick="setTokenTab(0,this)">Overview</div>
-          <div class="tab" onclick="setTokenTab(1,this)">Trades</div>
-          <div class="tab" onclick="setTokenTab(2,this)">Holders</div>
-          <div class="tab" onclick="setTokenTab(3,this)">Contract</div>
-          <div class="tab active" onclick="setTokenTab(4,this)">Chat</div>
-        </div>
-
-        <div id="tab-0" style="display:none">
-
-        <div class="token-data-grid">
-          
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div class="grid-2" style="gap:12px;">
-              <div class="card" style="padding:14px">
-                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Market Cap</div>
-                <div style="font-size:18px;font-weight:800" id="overview-mcap">$0.00</div>
-              </div>
-              <div class="card" style="padding:14px">
-                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">24h Volume</div>
-                <div style="font-size:18px;font-weight:800" id="overview-vol">$0.00</div>
-              </div>
-              <div class="card" style="padding:14px">
-                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Liquidity</div>
-                <div style="font-size:18px;font-weight:800;color:var(--neon3)" id="overview-liq">$0.00 <span style="font-size:11px">🔒</span></div>
-              </div>
-              <div class="card" style="padding:14px">
-                <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Holders</div>
-                <div style="font-size:18px;font-weight:800">3,482</div>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-header"><div class="card-title">🛡️ Transparency Report</div></div>
-              <div class="risk-item">
-                <div><div class="risk-label">Liquidity Lock</div><div style="font-size:11px;color:var(--text3)">Locked for 6 months via PumpLab</div></div>
-                <div style="text-align:right"><div class="risk-level risk-low">✓ Locked</div><div style="font-size:10px;color:var(--text3)">5mo 14d left</div></div>
-              </div>
-              <div class="risk-item">
-                <div><div class="risk-label">Mint/Freeze Authority</div><div style="font-size:11px;color:var(--text3)">Contract mutation risk</div></div>
-                <div class="risk-level risk-low">✓ Revoked</div>
-              </div>
-              <div class="risk-item">
-                <div><div class="risk-label">Top 10 Holders</div><div style="font-size:11px;color:var(--text3)">Concentration risk</div></div>
-                <div class="risk-level risk-med">⚠ 31%</div>
-              </div>
-            </div>
+        <div class="term-card">
+          <div class="term-tabs">
+            <button class="term-tab">Trades</button>
+            <button class="term-tab">Positions</button>
+            <button class="term-tab">Orders</button>
+            <button class="term-tab">Holders (312)</button>
+            <button class="term-tab active">Top Traders</button>
+            <button class="term-tab">Dev Tokens (186)</button>
           </div>
-          
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div class="card">
-              <div class="card-header"><div class="card-title">💬 Token Chat</div><span class="live-dot"></span></div>
-              <div class="chat-container" style="height: 180px;">
-                <div class="chat-messages" id="token-chat-msgs"></div>
-                <div>
-                  <div class="emoji-row">
-                    <span class="emoji-btn" onclick="sendReaction('🚀')">🚀</span>
-                    <span class="emoji-btn" onclick="sendReaction('💎')">💎</span>
-                    <span class="emoji-btn" onclick="sendReaction('🐳')">🐳</span>
-                  </div>
-                  <div class="chat-input-row">
-                    <input class="chat-input" id="token-chat-input" placeholder="Say something anon..." onkeydown="if(event.key==='Enter')sendTokenMsg()"/>
-                    <button class="btn btn-primary btn-sm" onclick="sendTokenMsg()">Send</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card">
-               <div class="card-header" style="margin-bottom:8px;"><div class="card-title">⚡ Live Trades</div></div>
-               <div id="trades-feed" style="max-height: 160px; overflow-y: auto;"></div>
-            </div>
+          <div class="term-table-wrapper">
+            <table class="term-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Address</th>
+                  <th>Balance</th>
+                  <th>Bought (Avg MC)</th>
+                  <th>Sold (Avg MC)</th>
+                  <th>R. PnL ⇅</th>
+                  <th>Funded By</th>
+                </tr>
+              </thead>
+              <tbody id="top-traders-feed">
+                </tbody>
+            </table>
           </div>
         </div>
-      </div>
-      </div>
+
       </div>
 
-      <!-- RIGHT: BUY/SELL + WHALE FEED -->
-      <div>
-        <!-- BUY/SELL -->
-        <div class="trade-panel mb-4" style="margin-bottom:12px">
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        
+        <div class="trade-panel">
           <div class="trade-tabs">
             <button class="trade-tab buy active" id="buy-tab" onclick="setTradeTab('buy')">Buy</button>
             <button class="trade-tab sell" id="sell-tab" onclick="setTradeTab('sell')">Sell</button>
           </div>
+          
           <div class="input-group">
-            <div class="input-label"><span>Amount (SOL)</span><span style="color:var(--text3)">Bal: 12.4 SOL</span></div>
+            <div class="input-label"><span>Total</span><span style="color:var(--text3)">0 SOL</span></div>
             <input class="input" placeholder="0.0" type="number" step="0.1" id="trade-amount"/>
           </div>
-          <div style="display:flex;gap:6px;margin-bottom:12px">
-            <button class="slip-btn" onclick="setAmount(0.1)">0.1</button>
-            <button class="slip-btn" onclick="setAmount(0.5)">0.5</button>
-            <button class="slip-btn" onclick="setAmount(1)">1</button>
-            <button class="slip-btn" onclick="setAmount(5)">5</button>
-            <button class="slip-btn" onclick="setAmount(10)">Max</button>
+          
+          <div style="display:flex;gap:6px;margin-bottom:16px">
+            <button class="slip-btn" style="flex:1" onclick="setAmount(0.1)">0.1</button>
+            <button class="slip-btn" style="flex:1" onclick="setAmount(0.2)">0.2</button>
+            <button class="slip-btn" style="flex:1" onclick="setAmount(0.5)">0.5</button>
+            <button class="slip-btn" style="flex:1" onclick="setAmount(1)">1</button>
           </div>
-          <div class="input-group">
-            <div class="input-label">Slippage Tolerance</div>
-            <div class="slippage-btns">
-              <button class="slip-btn" onclick="setSlip(this)">0.5%</button>
-              <button class="slip-btn active" onclick="setSlip(this)">1%</button>
-              <button class="slip-btn" onclick="setSlip(this)">2%</button>
-              <button class="slip-btn" onclick="setSlip(this)">5%</button>
-              <button class="slip-btn" onclick="setSlip(this)">Custom</button>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:11px; font-weight:700;">
+            <span style="color:var(--text2)">Gas -</span>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span style="color:var(--text3)">⛽ 0.003</span>
+              <span style="color:var(--text3)">⛽ 0.004</span>
+              <span style="color:var(--neon3)">⚡ 20%</span>
             </div>
           </div>
-          <div style="background:var(--bg2);border-radius:8px;padding:10px;margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px"><span>Estimated tokens</span><span id="est-tokens">—</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px"><span>Price impact</span><span style="color:var(--neon3)">~0.12%</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)"><span>Min received</span><span>—</span></div>
-          </div>
-          <button class="btn btn-success" style="width:100%;justify-content:center;padding:12px" onclick="showModal('txPreview')">Preview Transaction</button>
-          <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px">🔒 Non-custodial • Keys stay in your wallet</div>
+
+          <button class="btn btn-success" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg, #10b981, #059669);" onclick="showModal('txPreview')">Buy Ceiling</button>
         </div>
 
-        <!-- WHALE FEED -->
-        <div class="card">
-          <div class="card-header"><div class="card-title">🐳 Whale Feed</div><span class="live-dot"></span></div>
-          <div id="whale-feed" style="max-height:240px;overflow-y:auto"></div>
+        <div class="perf-row">
+          <div class="perf-box"><span style="font-size:10px;color:var(--text3)">5M</span><span class="up" style="font-size:12px;font-weight:700">+64.3%</span></div>
+          <div class="perf-box"><span style="font-size:10px;color:var(--text3)">1H</span><span class="up" style="font-size:12px;font-weight:700">+676.9%</span></div>
+          <div class="perf-box"><span style="font-size:10px;color:var(--text3)">6H</span><span class="up" style="font-size:12px;font-weight:700">+676.9%</span></div>
+          <div class="perf-box"><span style="font-size:10px;color:var(--text3)">24H</span><span class="up" style="font-size:12px;font-weight:700">+676.9%</span></div>
         </div>
+
+        <div class="card" style="padding:16px;">
+          <div style="font-size:12px; font-weight:700; margin-bottom:16px; color:var(--text2); display:flex; justify-content:space-between;">
+            <span>Token Data & Security</span>
+            <span style="color:var(--text3); cursor:pointer;">⛭</span>
+          </div>
+          
+          <div class="sec-grid">
+            <div class="sec-box"><span class="sec-val" style="color:var(--neon4)">21.5%</span><span class="sec-label">Top 10 H.</span></div>
+            <div class="sec-box"><span class="sec-val up">0%</span><span class="sec-label">Dev holding</span></div>
+            <div class="sec-box"><span class="sec-val up">0%</span><span class="sec-label">Snipers</span></div>
+            
+            <div class="sec-box"><span class="sec-val up">5%</span><span class="sec-label">Insiders H.</span></div>
+            <div class="sec-box"><span class="sec-val" style="color:var(--white)">21.7%</span><span class="sec-label">Bundles H.</span></div>
+            <div class="sec-box"><span class="sec-val up">100%</span><span class="sec-label">Burned Liq.</span></div>
+            
+            <div class="sec-box"><span class="sec-val up">40</span><span class="sec-label">Fresh buys</span></div>
+            <div class="sec-box"><span class="sec-val up">> 0%</span><span class="sec-label">Fresh holding</span></div>
+            <div class="sec-box"><span class="sec-val up">No</span><span class="sec-label">Mint Auth.</span></div>
+          </div>
+
+          <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+            <span style="color:var(--text3)">CA: <span style="color:var(--text); font-family:monospace;">7RESHHpD2...bPfo</span></span>
+            <span style="color:var(--text2); cursor:pointer; background:var(--glass2); padding:4px 8px; border-radius:4px;">📄 Copy</span>
+          </div>
+        </div>
+
       </div>
+
     </div>
   </div>
 </div>
@@ -1803,6 +1797,39 @@ const MarketController = {
     container.prepend(d);
     if (container.children.length > 5) container.lastChild.remove();
   }
+};
+
+// ============================================================
+// TERMINAL TABLE GENERATOR
+// ============================================================
+window.renderTopTraders = function() {
+  const tbody = document.getElementById('top-traders-feed');
+  if (!tbody) return;
+  
+  let html = '';
+  // Generate 6 realistic looking trader rows
+  for(let i=1; i<=6; i++) {
+    const address = Utils.rndHex(4) + '...' + Utils.rndHex(3);
+    const balance = (Math.random() * 30 + 5).toFixed(2);
+    const boughtUsd = (Math.random() * 400 + 100).toFixed(1);
+    const boughtMc = (Math.random() * 5 + 1).toFixed(2);
+    const soldUsd = (Math.random() * 900 + 200).toFixed(1);
+    const soldMc = (Math.random() * 20 + 5).toFixed(1);
+    const pnl = (Math.random() * 500 + 100).toFixed(2);
+    
+    html += `
+      <tr>
+        <td style="color:var(--text3)">${i}</td>
+        <td><span style="color:var(--text2); cursor:pointer;">⚲</span> ${address}</td>
+        <td style="color:#a78bfa">${balance}</td>
+        <td><div style="color:var(--neon3)">$${boughtUsd}</div><div style="font-size:10px;color:var(--text3)">${boughtMc}K</div></td>
+        <td><div style="color:var(--red)">$${soldUsd}</div><div style="font-size:10px;color:var(--text3)">${soldMc}K</div></td>
+        <td style="color:var(--neon3)">+$${pnl}</td>
+        <td><span class="badge badge-amber" style="font-size:9px; background:transparent; border-color:var(--neon4)">Binance</span></td>
+      </tr>
+    `;
+  }
+  tbody.innerHTML = html;
 };
 
 // ============================================================
