@@ -405,6 +405,14 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 /* SECTION */
 .section{padding:32px 0}
 
+/* MOBILE NAV */
+.mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(6,6,14,0.95); backdrop-filter: blur(20px); border-top: 1px solid var(--border); z-index: 2000; padding: 8px 16px; }
+.mobile-nav-inner { display: flex; justify-content: space-around; align-items: center; }
+.mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); cursor: pointer; transition: color 0.2s; }
+.mobile-nav-item.active, .mobile-nav-item:hover { color: var(--neon); }
+.mobile-nav-icon { font-size: 20px; margin-bottom: -2px; }
+.mobile-nav-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
 /* ==================== RESPONSIVE AUTO-FORMATTING ==================== */
 @media(max-width: 1200px) {
   /* Smaller Laptops: Slightly shrink the right column */
@@ -428,7 +436,8 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   /* Mobile Phones: Condense everything for small screens */
   .nav { padding: 0 12px; }
   .nav-links { display: none; }
-  
+  .mobile-nav { display: block; }
+
   /* Shrink the search bar */
   .search-input { width: 130px; }
   .search-input:focus { width: 160px; }
@@ -479,6 +488,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
     <div class="nav-link" onclick="showPage('launch');setActive(this)">Launch</div>
     <div class="nav-link" onclick="showPage('token');setActive(this)">Trade</div>
     <div class="nav-link" onclick="showPage('trenches');setActive(this)">Trenches</div>
+    <div class="nav-link" onclick="showPage('security');setActive(this)">Security</div>
     <div class="nav-link" onclick="showPage('portfolio');setActive(this)">Portfolio</div>
     <div class="nav-link" onclick="showPage('social');setActive(this)">X Tracker</div>
   </div>
