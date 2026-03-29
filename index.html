@@ -1744,14 +1744,18 @@ window.showPage = function(pageId) {
 
 // Navigate to specific token page and update the header
 window.viewToken = function(name, ticker, change, pairAddress) {
+  // 1. Sanitize the incoming data
   const safeName = name || ticker || "Unknown";
   const safeTicker = ticker || "TOKEN";
   const safeChange = change !== undefined && change !== 'undefined' ? parseFloat(change) : (Math.random() * 50 - 10);
 
-  // 🔥 Save the pair address globally (Fallback to an active pool if missing so the chart doesn't crash)
+  // 2. Save the pair address globally so the Chart Engine can use it
   window.currentPairAddress = pairAddress || "8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump"; 
 
+  // 3. Update the UI text elements
   const nameEl = document.querySelector('.token-header-name');
+  const symEl = document.querySelector('.token-header-sym');
+  const changeEl = document.getElementById('token-change');
 
   if (nameEl) nameEl.textContent = safeName;
   if (symEl) symEl.textContent = safeTicker + '/SOL';
@@ -1761,10 +1765,16 @@ window.viewToken = function(name, ticker, change, pairAddress) {
     changeEl.className = 'token-header-change ' + (isUp ? 'up' : 'down');
   }
 
+  // 4. SWITCH THE PAGE (This is what was missing!)
   window.showPage('token');
+  
+  // 5. Update the navigation bar highlight
   document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+  
+  // 6. Show the connection toast
   window.showToast(`Connected to ${safeTicker} node`, 'success');
   
+  // 7. Boot up the TradingView Chart (with a 50ms delay to prevent the 0x0 invisible canvas bug)
   if (typeof window.initChart === 'function') {
       setTimeout(window.initChart, 50); 
   }
