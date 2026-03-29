@@ -2157,16 +2157,34 @@ function renderStaticComponents() {
   // 1. Chart Initializer
   window.initChart = function() {
     const container = document.getElementById('priceChartContainer');
-    if(!container) return;
-    
+    if (!container) {
+      console.error("[Chart] Container not found in DOM.");
+      return;
+    }
+
+    // 1. Safety Check: Did the script actually load?
+    if (typeof LightweightCharts === 'undefined') {
+      console.error("[Chart] LightweightCharts library is missing! Check your <script> tag.");
+      return;
+    }
+
     // Clean up previous chart instance if it exists
-    if(container.chartInstance) {
+    if (container.chartInstance) {
       container.chartInstance.remove();
     }
     container.innerHTML = '';
     
+    // 2. The 0x0 Fix: Force dimensions if the browser is lagging on the CSS paint
+    const rect = container.getBoundingClientRect();
+    const chartWidth = rect.width || container.clientWidth || 800; // Fallback to 800px
+    const chartHeight = rect.height || container.clientHeight || 300; // Fallback to 300px
+
+    console.log(`[Chart] Booting up canvas at ${chartWidth}x${chartHeight}...`);
+
     // Initialize TradingView Lightweight Chart
     const chart = LightweightCharts.createChart(container, {
+      width: chartWidth,
+      height: chartHeight,
       layout: { 
         background: { type: 'solid', color: 'transparent' }, 
         textColor: '#94a3b8' 
@@ -2203,7 +2221,7 @@ function renderStaticComponents() {
       const low = Math.min(open, close) - Math.random() * (open * 0.05);
       data.push({ time, open, high, low, close });
       currentPrice = close;
-      time += 300; // Next candle in 5 minutes
+      time += 300; 
     }
     candleSeries.setData(data);
 
@@ -2225,6 +2243,9 @@ function renderStaticComponents() {
         height: entries[0].contentRect.height 
       });
     }).observe(container);
+    
+    // Fit content beautifully
+    chart.timeScale().fitContent();
   };
 
   // ============================================================
