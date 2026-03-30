@@ -2868,38 +2868,52 @@ document.querySelectorAll('button').forEach(b => {
   }
 });
 
-window.handleSearch = function(val) {
+window.handleSearch = async function(val) {
   const resEl = document.getElementById('search-res');
   if(!val || val.length < 2) { resEl.style.display = 'none'; return; }
-  const lower = val.toLowerCase();
   
-  // 🔥 Search the live global cache, not just the static test coins
-  const source = window.terminalCache || [];
-  
-  const matches = source.filter(t => 
-    (t.name && t.name.toLowerCase().includes(lower)) || 
-    (t.ticker && t.ticker.toLowerCase().includes(lower)) ||
-    (t.address && t.address.toLowerCase() === lower) // Allows exact CA pasting
-  );
-  
-  if(matches.length === 0) {
-    resEl.innerHTML = `<div style="padding:10px; font-size:12px; color:var(--text3); text-align:center;">No tokens found in live cache</div>`;
-  } else {
-    resEl.innerHTML = matches.slice(0, 5).map(t => {
-      // Format the image or fallback text
-      const iconHtml = t.image 
-        ? `<img src="${t.image}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` 
-        : (t.ticker ? t.ticker.charAt(0) : '?');
-        
-      return `
-      <div class="search-item" onmousedown="window.viewToken('${t.name.replace(/'/g, "\\'")}', '${t.ticker.replace(/'/g, "\\'")}', '${t.change1h}', '${t.pairAddress}'); document.getElementById('search-res').style.display='none';">
-         <div class="token-avatar" style="width:24px; height:24px; font-size:12px; background:var(--bg2)">${iconHtml}</div>
-         <div><div style="font-size:12px; font-weight:700;">${t.name}</div><div style="font-size:10px; color:var(--text3);">$${t.ticker}</div></div>
-      </div>
-      `;
-    }).join('');
-  }
   resEl.style.display = 'flex';
+  resEl.innerHTML = `<div style="padding:10px; font-size:12px; color:var(--text3); text-align:center;"><i data-lucide="loader" class="lucide-xs" style="animation: spin 2s linear infinite;"></i> Searching blockchain...</div>`;
+  if (window.lucide) window.lucide.createIcons();
+
+  try {
+    // 🔥 Ping the global DexScreener database
+    const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${val}`);
+    const data = await res.json();
+    
+    // Filter out Ethereum/BSC coins, keep only Solana
+    const matches = (data.pairs || []).filter(p => p.chainId === 'solana');
+
+    if(matches.length === 0) {
+      resEl.innerHTML = `<div style="padding:10px; font-size:12px; color:var(--text3); text-align:center;">No Solana tokens found</div>`;
+    } else {
+      resEl.innerHTML = matches.slice(0, 6).map(t => {
+        const name = t.baseToken.name.replace(/'/g, "\\'");
+        const ticker = t.baseToken.symbol.replace(/'/g, "\\'");
+        const change = t.priceChange?.h1 || 0;
+        const address = t.pairAddress;
+        
+        const iconHtml = t.info?.imageUrl 
+          ? `<img src="${t.info?.imageUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` 
+          : `<span style="font-weight:900">${ticker.charAt(0)}</span>`;
+          
+        return `
+        <div class="search-item" onmousedown="window.viewToken('${name}', '${ticker}', '${change}', '${address}'); document.getElementById('search-res').style.display='none';">
+           <div class="token-avatar" style="width:24px; height:24px; font-size:12px; background:var(--bg2)">${iconHtml}</div>
+           <div style="flex:1;">
+             <div style="font-size:12px; font-weight:700;">${t.baseToken.name}</div>
+             <div style="font-size:10px; color:var(--text3); display:flex; justify-content:space-between;">
+                <span>$${t.baseToken.symbol}</span>
+                <span>Vol: $${((t.volume?.h24 || 0)/1000).toFixed(1)}k</span>
+             </div>
+           </div>
+        </div>
+        `;
+      }).join('');
+    }
+  } catch (e) {
+    resEl.innerHTML = `<div style="padding:10px; font-size:12px; color:var(--red); text-align:center;">Search network error</div>`;
+  }
 };
 
 window.sendGlobalChat = function() {
@@ -3598,7 +3612,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ============================================================
   // WEB3 GLOBALS & CONSTANTS
   // ============================================================
-  const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+  const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=3637ceed-59ac-465a-9a98-ebc048da759f", "confirmed");
   const METAPLEX_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
   // ============================================================
