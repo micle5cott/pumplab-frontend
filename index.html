@@ -4113,14 +4113,15 @@ window.loadRealPortfolio = async function() {
           const inputMint = isSell ? mint : solMint;
           const outputMint = isSell ? solMint : mint;
           
-          // Convert amount to integer. Assuming 6 decimals for meme coins, 9 for SOL.
           const inputDecimals = isSell ? 6 : 9; 
           const rawAmount = Math.floor(amount * Math.pow(10, inputDecimals));
-
-          // Slippage (BPS) - Defaulting to 15% (1500) for high-volatility meme coins
           const slippageBps = 1500;
 
-          const res = await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${rawAmount}&slippageBps=${slippageBps}`);
+          // 🔥 Wrap the Jupiter URL in the CORS Proxy
+          const targetUrl = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${rawAmount}&slippageBps=${slippageBps}`;
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+          const res = await fetch(proxyUrl);
           const quoteResponse = await res.json();
           
           window.currentJupiterQuote = quoteResponse;
@@ -4188,8 +4189,11 @@ window.loadRealPortfolio = async function() {
     window.showToast("Confirming trade via Jupiter Aggregator...", "info");
 
     try {
-        // 1. Get Swap Transaction from Jupiter
-        const swapReq = await fetch('https://quote-api.jup.ag/v6/swap', {
+        // 🔥 1. Get Swap Transaction from Jupiter (WRAPPED IN CORS PROXY)
+        const targetUrl = 'https://quote-api.jup.ag/v6/swap';
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+        const swapReq = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4250,7 +4254,7 @@ window.loadRealPortfolio = async function() {
     const symbol = document.querySelector('.token-header-sym').textContent.split('/')[0] || "TOKEN";
     
     window.executeSnipe(null, symbol, amount, isSell);
-};
+  };
 
 // Add this helper to manage the visual toggles for the Buy/Sell buttons
 window.setTradeTab = function(type) {
