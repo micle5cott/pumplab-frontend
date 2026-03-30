@@ -1035,7 +1035,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
             <label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
           </div>
 
-          <button class="btn btn-success" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg, #10b981, #059669);" onclick="showModal('txPreview')">Buy Ceiling</button>
+          <button class="btn btn-success" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg, #10b981, #059669);" onclick="window.triggerManualTrade()">Buy Ceiling</button>
         </div>
 
         <div class="perf-row">
@@ -2704,7 +2704,7 @@ window.switchTerminalTab = function(tab, btnEl) {
       if (window.lucide) window.lucide.createIcons();
       return;
   }
-  
+
   html += '</table>';
   container.innerHTML = html;
 };
@@ -3958,27 +3958,53 @@ window.loadRealPortfolio = async function() {
     }
   };
 
-  // ============================================================
-  // TRADE ROUTER
-  window.executeTrade = async function() {
-    if (!window.connectedWallet) { window.closeModal('txPreview'); return window.showToast("Connect wallet", "warning"); }
-    window.closeModal('txPreview');
-    window.showToast("Confirming trade via Raydium Router...", "info");
-    setTimeout(() => {
-      const amt = document.getElementById('trade-amount').value || 0;
-      window.showToast(`Trade successful! Swapped ${amt} SOL`, "success");
-      
-      // 🔥 RECORD THE ENTRY PRICE FOR PnL TRACKING
-      const currentPrice = parseFloat(document.getElementById('chart-price').textContent.replace('$',''));
-      const ticker = document.querySelector('.token-header-sym').textContent.split('/')[0];
-      const tokenData = window.terminalCache?.find(t => t.ticker === ticker);
-      if(tokenData) window.recordPurchase(tokenData.address, currentPrice);
+  // Helper to decode Base64 transactions in the browser
+  const base64ToUint8Array = (base64) => {
+      const binaryString = window.atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+  };
 
-    }, 1500);
+  window.activeTradeContext = null;
+  window.currentJupiterQuote = null;
+
+  window.fetchJupiterQuote = async function(mint, amount, isSell) {
+      try {
+          const solMint = "So11111111111111111111111111111111111111112";
+          const inputMint = isSell ? mint : solMint;
+          const outputMint = isSell ? solMint : mint;
+          
+          // Convert amount to integer. Assuming 6 decimals for meme coins, 9 for SOL.
+          const inputDecimals = isSell ? 6 : 9; 
+          const rawAmount = Math.floor(amount * Math.pow(10, inputDecimals));
+
+          // Slippage (BPS) - Defaulting to 15% (1500) for high-volatility meme coins
+          const slippageBps = 1500;
+
+          const res = await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${rawAmount}&slippageBps=${slippageBps}`);
+          const quoteResponse = await res.json();
+          
+          window.currentJupiterQuote = quoteResponse;
+
+          const outDecimals = isSell ? 9 : 6;
+          const outAmount = (parseInt(quoteResponse.outAmount) / Math.pow(10, outDecimals)).toFixed(4);
+          
+          const recvEl = document.getElementById('tx-receive');
+          if (recvEl) recvEl.textContent = `~${outAmount} ${isSell ? 'SOL' : window.activeTradeContext.symbol}`;
+          
+      } catch (e) {
+          console.error("Jupiter Quote Error:", e);
+          const recvEl = document.getElementById('tx-receive');
+          if (recvEl) recvEl.textContent = `Routing Error`;
+      }
   };
 
   // ============================================================
-  // QUICK SNIPE EXECUTION
+  // QUICK SNIPE EXECUTION (Fetches Quote)
   // ============================================================
   window.executeSnipe = function(event, symbol, amount, isSell = false) {
     if (event) event.stopPropagation();
@@ -3987,15 +4013,122 @@ window.loadRealPortfolio = async function() {
       window.showToast("Please connect your wallet to snipe", "warning");
       return window.showModal('walletModal');
     }
+
+    // Find the real contract address from our terminal cache
+    const tokenData = window.terminalCache?.find(t => t.ticker === symbol);
+    const mint = tokenData ? tokenData.address : window.currentPairAddress; 
+
+    if (!mint) return window.showToast("Token address not found", "warning");
+    
+    // Clean the amount string (e.g., handling "50% Wallet Bal" gracefully)
+    let numericAmount = parseFloat(amount.toString().replace(/[^0-9.]/g, '')) || 0;
+
+    window.activeTradeContext = { symbol, mint, amount: numericAmount, isSell };
     
     const actionEl = document.getElementById('tx-action');
     const payEl = document.getElementById('tx-pay');
+    const recvEl = document.getElementById('tx-receive');
     
     if (actionEl) actionEl.textContent = `${isSell ? 'Sell' : 'Buy'} $${symbol}`;
-    if (payEl) payEl.textContent = `${amount} ${isSell ? symbol : 'SOL'}`;
+    if (payEl) payEl.textContent = `${numericAmount} ${isSell ? symbol : 'SOL'}`;
+    if (recvEl) recvEl.textContent = `Finding route...`;
     
     window.showModal('txPreview');
+    window.fetchJupiterQuote(mint, numericAmount, isSell);
   };
+
+  // ============================================================
+  // TRADE ROUTER (Signs & Broadcasts via Phantom)
+  // ============================================================
+  window.executeTrade = async function() {
+    if (!window.connectedWallet) { 
+        window.closeModal('txPreview'); 
+        return window.showToast("Connect wallet", "warning"); 
+    }
+    if (!window.currentJupiterQuote) {
+        return window.showToast("Waiting for route calculation...", "warning");
+    }
+
+    window.closeModal('txPreview');
+    window.showToast("Confirming trade via Jupiter Aggregator...", "info");
+
+    try {
+        // 1. Get Swap Transaction from Jupiter
+        const swapReq = await fetch('https://quote-api.jup.ag/v6/swap', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quoteResponse: window.currentJupiterQuote,
+                userPublicKey: window.connectedWallet.publicKey.toString(),
+                wrapAndUnwrapSol: true,
+                dynamicComputeUnitLimit: true,
+                prioritizationFeeLamports: "auto" // Anti-MEV Priority Fee
+            })
+        });
+
+        const swapRes = await swapReq.json();
+        if (!swapRes.swapTransaction) throw new Error("Failed to build transaction");
+
+        // 2. Deserialize Transaction for Phantom
+        const { VersionedTransaction } = await import("https://esm.sh/@solana/web3.js");
+        const swapTransactionBuf = base64ToUint8Array(swapRes.swapTransaction);
+        const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+
+        // 3. Request User Signature
+        const signedTransaction = await window.connectedWallet.signTransaction(transaction);
+        const rawTransaction = signedTransaction.serialize();
+        
+        window.showToast("Transaction signed. Broadcasting to network...", "info");
+
+        // 4. Broadcast to Blockchain
+        const txid = await connection.sendRawTransaction(rawTransaction, {
+            skipPreflight: true,
+            maxRetries: 2
+        });
+
+        // 5. Verify & Record
+        const latestBlockHash = await connection.getLatestBlockhash();
+        await connection.confirmTransaction({
+          blockhash: latestBlockHash.blockhash,
+          lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+          signature: txid
+        });
+
+        window.showToast(`Trade successful!`, "success");
+
+        if (!window.activeTradeContext.isSell) {
+            const currentPrice = parseFloat(document.getElementById('chart-price').textContent.replace('$',''));
+            window.recordPurchase(window.activeTradeContext.mint, currentPrice);
+        }
+
+    } catch (e) {
+        console.error("Trade Execution Error:", e);
+        window.showToast(`Trade failed. Ensure you have enough SOL for fees.`, "warning");
+    }
+  };
+
+  window.triggerManualTrade = function() {
+    const amount = document.getElementById('trade-amount').value;
+    if (!amount || parseFloat(amount) <= 0) return window.showToast("Enter a valid amount", "warning");
+    
+    const isSell = document.getElementById('sell-tab').classList.contains('active');
+    const symbol = document.querySelector('.token-header-sym').textContent.split('/')[0] || "TOKEN";
+    
+    window.executeSnipe(null, symbol, amount, isSell);
+};
+
+// Add this helper to manage the visual toggles for the Buy/Sell buttons
+window.setTradeTab = function(type) {
+    document.getElementById('buy-tab').classList.remove('active');
+    document.getElementById('sell-tab').classList.remove('active');
+    document.getElementById(type + '-tab').classList.add('active');
+    
+    const btn = document.querySelector('.trade-panel .btn-success');
+    if (btn) {
+        btn.textContent = type === 'buy' ? 'Buy Ceiling' : 'Market Sell';
+        btn.style.background = type === 'buy' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #dc2626)';
+    }
+};
 
 </script>
 </body>
