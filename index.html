@@ -526,7 +526,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   <div class="mobile-nav-inner">
     <div class="mobile-nav-item active" onclick="showPage('home');setMobileActive(this)"><i data-lucide="home" class="mobile-nav-icon"></i><span class="mobile-nav-label">Home</span></div>
     <div class="mobile-nav-item" onclick="showPage('launch');setMobileActive(this)"><i data-lucide="rocket" class="mobile-nav-icon"></i><span class="mobile-nav-label">Deploy</span></div>
-    <div class="mobile-nav-item" onclick="showPage('trenches');setMobileActive(this)"><i data-lucide="crosshairs" class="mobile-nav-icon"></i><span class="mobile-nav-label">Trenches</span></div>
+    <div class="mobile-nav-item" onclick="showPage('trenches');setMobileActive(this)"><i data-lucide="target" class="mobile-nav-icon"></i><span class="mobile-nav-label">Trenches</span></div>
     <div class="mobile-nav-item" onclick="showPage('security');setMobileActive(this)"><i data-lucide="shield-check" class="mobile-nav-icon"></i><span class="mobile-nav-label">Security</span></div>
     <div class="mobile-nav-item" onclick="showPage('portfolio');setMobileActive(this)"><i data-lucide="briefcase" class="mobile-nav-icon"></i><span class="mobile-nav-label">Portfolio</span></div>
   </div>
@@ -706,7 +706,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
           <input class="input" placeholder="https://"/>
         </div>
         <div class="form-group">
-          <label class="form-label">Twitter / X</label>
+          <label class="form-label">message-circle / X</label>
           <input class="input" placeholder="@yourtoken"/>
         </div>
       </div>
@@ -1292,7 +1292,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
 <div class="page" id="page-social">
   <div class="container" style="padding-top:24px; max-width:1000px">
     <div style="text-align:center; margin-bottom:32px">
-      <div style="font-size:28px; font-weight:900; color:#1da1f2">X / Twitter Tracker 🐦</div>
+      <div style="font-size:28px; font-weight:900; color:#1da1f2">X / message-circle Tracker 🐦</div>
       <div style="font-size:14px; color:var(--text2)">Live sentiment and narrative tracking</div>
     </div>
     
@@ -1603,7 +1603,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
         <div class="nav-logo-text" style="font-size:14px;">PumpLab Terminal</div>
       </div>
     </div>
-    <button class="btn btn-primary" style="width:100%; justify-content:center; padding: 14px;" onclick="window.showToast('Image saved to clipboard!', 'success'); closeModal('flexModal')"><i data-lucide="twitter"></i> Share to X</button>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; padding: 14px;" onclick="window.showToast('Image saved to clipboard!', 'success'); closeModal('flexModal')"><i data-lucide="𝕏"></i> Share to X</button>
   </div>
 </div>
 
@@ -1832,6 +1832,11 @@ window.initMiniCharts = function() {
 window.defaultHotkeys = {
   'buy_1': '1', 'buy_2': '2', 'buy_3': '3', 'buy_4': '4',
   'sell_1': 'Q', 'sell_2': 'W', 'sell_3': 'E', 'sell_4': 'R'
+};
+
+window.setAmount = function(val) {
+    const input = document.getElementById('trade-amount');
+    if (input) input.value = val;
 };
 
 window.defaultHotkeyConfigs = {
@@ -3504,7 +3509,7 @@ window.initChart = async function() {
               <div class="trench-row2">
                 <span>${t.age} ago</span> • <span>Liq: $${(liq/1000).toFixed(1)}k</span>
                 <div class="trench-socials" style="margin-left:auto; display:flex; gap:6px;">
-                  ${hasX ? '<span title="Twitter"><i data-lucide="twitter" class="lucide-xs"></i></span>' : ''}
+                  ${hasX ? '<span title=""message-circle"><i data-lucide=""message-circle" class="lucide-xs"></i></span>' : ''}
                   ${hasTg ? '<span title="Telegram"><i data-lucide="send" class="lucide-xs"></i></span>' : ''}
                   <span title="Website"><i data-lucide="globe" class="lucide-xs"></i></span>
                 </div>
