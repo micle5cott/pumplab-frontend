@@ -2420,7 +2420,10 @@ window.switchTerminalTab = function(tab, btnEl) {
 
     if (window.currentPairAddress) {
         fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${window.currentPairAddress}/trades`)
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 429) throw new Error("Rate Limited");
+                return res.json();
+            })
             .then(data => {
                 const tbody = document.getElementById('term-live-trades');
                 if (!tbody) return;
@@ -2457,7 +2460,10 @@ window.switchTerminalTab = function(tab, btnEl) {
                     </tr>`;
                 });
                 tbody.insertAdjacentHTML('beforeend', tradesHtml);
-            }).catch(err => console.error(err));
+            }).catch(err => {
+                const tbody = document.getElementById('term-live-trades');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--red); padding:20px;">GeckoTerminal Rate Limited (30 requests/min). Please wait 60s.</td></tr>`;
+            });
     }
     return; 
   }
@@ -2781,6 +2787,9 @@ window.viewToken = function(name, ticker, change, pairAddress) {
      if (volEl) volEl.textContent = '$' + tokenData.vol24h;
      if (liqEl) liqEl.innerHTML = '$' + (tokenData.liquidity / 1000).toFixed(1) + 'K <span style="font-size:11px">🔒</span>';
   }
+
+  // 🔥 Export the price so the blank slate chart knows where to start drawing
+  window.currentTokenPrice = parseFloat(tokenData?.price) || 0.00001; 
 
   window.showPage('token');
   document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
@@ -3171,6 +3180,7 @@ window.fetchTerminalData = async function() {
       parsedTokens.push({
         name: memeToken.name || "Unknown",
         ticker: memeToken.symbol || "???",
+        price: p.priceUsd || "0",
         mcap: formatNum(p.fdv),
         vol24h: formatNum(p.volume?.h24),
         rawVol24h: p.volume?.h24 || 0,
@@ -3367,7 +3377,13 @@ window.initChart = async function() {
   const container = document.getElementById('priceChartContainer');
   if (!container || typeof LightweightCharts === 'undefined') return;
 
-  if (container.chartInstance) container.chartInstance.remove();
+  // 🔥 Safely disconnect the old observer before destroying the chart
+  if (window.chartResizeObserver) {
+      window.chartResizeObserver.disconnect();
+  }
+  if (container.chartInstance) {
+      container.chartInstance.remove();
+  }
   container.innerHTML = '';
   
   const rect = container.getBoundingClientRect();
@@ -3476,10 +3492,13 @@ window.initChart = async function() {
     initBlankSlate();
   }
 
-  new ResizeObserver(entries => {
+  window.chartResizeObserver = new ResizeObserver(entries => {
     if (entries.length === 0 || entries[0].target !== container) return;
-    chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
-  }).observe(container);
+    try { 
+        chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
+    } catch(e) {}
+  });
+  window.chartResizeObserver.observe(container);
   
   chart.timeScale().fitContent();
 };
