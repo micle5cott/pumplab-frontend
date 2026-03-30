@@ -1370,6 +1370,10 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
       <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:12px;padding:12px 16px" onclick="window.connectWallet('Backpack')">        <span style="font-size:20px">🎒</span><span>Backpack</span>
       </button>
     </div>
+    <div style="font-size:12px; color:var(--text2); display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom: 12px;">
+      <input type="checkbox" id="remember-wallet" checked style="cursor:pointer; accent-color: var(--neon); width:14px; height:14px;" />
+      <label for="remember-wallet" style="cursor:pointer;">Stay connected on this device</label>
+    </div>
     <div style="font-size:11px;color:var(--text3);text-align:center">🔒 Non-custodial. We never access your funds.</div>
   </div>
 </div>
@@ -3585,19 +3589,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const METAPLEX_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 
   // ============================================================
-  // WALLET CONTROLLER
+  // WALLET CONTROLLER (With Persistence)
   // ============================================================
-  window.connectWallet = async function (walletType = 'Phantom') {
-    if (walletType !== 'Phantom') return window.showToast(`${walletType} support coming soon!`, 'info');
+  window.connectWallet = async function (walletType = 'Phantom', isAutoConnect = false) {
+    if (walletType !== 'Phantom') {
+        if (!isAutoConnect) window.showToast(`${walletType} support coming soon!`, 'info');
+        return;
+    }
     
     const provider = window.phantom?.solana || window.solana;
     if (!provider || !provider.isPhantom) {
+      if (isAutoConnect) return; // Fail silently if auto-connecting
       window.open('https://phantom.app/', '_blank');
       return window.showToast("Please install the Phantom extension.", "warning");
     }
 
     try {
-      const resp = await provider.connect();
+      // If auto-connecting, tell Phantom to only connect if the user already trusted the app (no popup)
+      const resp = await provider.connect({ onlyIfTrusted: isAutoConnect });
       const pubKey = resp.publicKey.toString();
       const shortKey = pubKey.slice(0, 4) + '...' + pubKey.slice(-4);
       
@@ -3607,15 +3616,42 @@ document.addEventListener('DOMContentLoaded', () => {
         navBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
       }
       
-      window.closeModal('walletModal');
-      window.showToast(`Connected: ${shortKey}`, 'success');
-      window.loadRealPortfolio();
       window.connectedWallet = provider;
+      
+      if (!isAutoConnect) {
+          window.closeModal('walletModal');
+          window.showToast(`Connected: ${shortKey}`, 'success');
+          
+          // Save the preference if the user left the box checked
+          const rememberEl = document.getElementById('remember-wallet');
+          if (rememberEl && rememberEl.checked) {
+              localStorage.setItem('pumpLab_savedWallet', walletType);
+          } else {
+              localStorage.removeItem('pumpLab_savedWallet');
+          }
+      }
+      
+      // Sync portfolio UI
+      if (window.loadRealPortfolio) window.loadRealPortfolio();
+
     } catch (err) {
-      console.error("Wallet connection failed:", err);
-      window.showToast("Connection rejected.", "warning");
+      if (!isAutoConnect) {
+          console.error("Wallet connection failed:", err);
+          window.showToast("Connection rejected.", "warning");
+      }
     }
   };
+
+  // Trigger auto-connect on page load if the user saved their wallet
+  window.addEventListener('load', () => {
+      const savedWallet = localStorage.getItem('pumpLab_savedWallet');
+      if (savedWallet) {
+          // Add a tiny delay to ensure Phantom's script has fully injected into the browser window
+          setTimeout(() => {
+              window.connectWallet(savedWallet, true);
+          }, 500);
+      }
+  });
 
   // ============================================================
 // PORTFOLIO PNL & COST BASIS ENGINE
