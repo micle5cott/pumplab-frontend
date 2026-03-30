@@ -943,14 +943,14 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
         <div class="trust-ring">
           <svg width="64" height="64" viewBox="0 0 64 64">
             <circle cx="32" cy="32" r="26" fill="none" stroke="var(--bg2)" stroke-width="5"/>
-            <circle cx="32" cy="32" r="26" fill="none" stroke="url(#trustGrad)" stroke-width="5" stroke-dasharray="163.4" stroke-dashoffset="29" stroke-linecap="round"/>
+            <circle id="trust-svg-ring" cx="32" cy="32" r="26" fill="none" stroke="url(#trustGrad)" stroke-width="5" stroke-dasharray="163.4" stroke-dashoffset="163.4" stroke-linecap="round" style="transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);"/>
             <defs><linearGradient id="trustGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs>
           </svg>
-          <div class="trust-num" style="font-size:13px;color:#a78bfa">82</div>
+          <div class="trust-num" id="token-trust-num" style="font-size:13px;color:var(--text3)">--</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">Trust Score</div>
-          <div style="font-size:11px;color:var(--neon3);font-weight:600">High</div>
+          <div id="token-trust-label" style="font-size:11px;color:var(--text3);font-weight:600">Calculating...</div>
         </div>
       </div>
     </div>
@@ -2816,20 +2816,62 @@ window.viewToken = function(name, ticker, change, pairAddress) {
       .then(res => res.json())
       .then(data => {
           if (data.result && data.result.value) {
+              // 1. Calculate Concentration
               const top10Amount = data.result.value.slice(0, 10).reduce((acc, curr) => acc + (curr.uiAmount || 0), 0);
               const totalSupply = 1000000000; // Standard 1B supply assumption
               const pct = ((top10Amount / totalSupply) * 100).toFixed(1);
               
-              // Find the "Top 10 H." box and update its value
+              // 2. Update the Security Grid
               const secBoxes = document.querySelectorAll('.sec-box');
               if (secBoxes[0]) {
                   secBoxes[0].querySelector('.sec-val').textContent = pct + '%';
                   secBoxes[0].querySelector('.sec-val').style.color = pct > 30 ? 'var(--red)' : 'var(--neon3)';
               }
+
+              // 🔥 3. LIVE TRUST SCORE ALGORITHM
+              let trustScore = 99; // Start at max
+              
+              // Penalty for high insider concentration (Rug risk)
+              if (pct > 50) trustScore -= 45;
+              else if (pct > 30) trustScore -= 20;
+              else if (pct > 20) trustScore -= 10;
+
+              // Penalty for low liquidity (Illiquid risk)
+              const liq = tokenData?.liquidity || 0;
+              if (liq < 2000) trustScore -= 40;
+              else if (liq < 10000) trustScore -= 15;
+
+              // Clamp score to a minimum of 10 and max of 99
+              trustScore = Math.max(10, Math.min(99, Math.floor(trustScore)));
+
+              // 4. Update the UI & Animate the Ring
+              const numEl = document.getElementById('token-trust-num');
+              const labelEl = document.getElementById('token-trust-label');
+              const ringEl = document.getElementById('trust-svg-ring');
+
+              let color = 'var(--neon3)'; // Green
+              let label = 'High';
+              if (trustScore < 50) { color = 'var(--red)'; label = 'Low'; }
+              else if (trustScore < 80) { color = 'var(--neon4)'; label = 'Medium'; }
+
+              if (numEl) {
+                  numEl.textContent = trustScore;
+                  numEl.style.color = color;
+              }
+              if (labelEl) {
+                  labelEl.textContent = label;
+                  labelEl.style.color = color;
+              }
+              if (ringEl) {
+                  // Circumference is ~163.4. Offset 0 is full, 163.4 is empty.
+                  const offset = 163.4 - ((trustScore / 100) * 163.4);
+                  ringEl.style.strokeDashoffset = offset;
+                  // Change the gradient color based on the score
+                  document.getElementById('trustGrad').innerHTML = `<stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${color}"/>`;
+              }
           }
       });
   }
-};
 
 // ============================================================
 // GLOBAL CHAT WIDGET LOGIC
