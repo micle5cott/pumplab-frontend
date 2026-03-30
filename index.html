@@ -1004,7 +1004,10 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
           </div>
           
           <div class="input-group">
-            <div class="input-label"><span>Total</span><span style="color:var(--text3)">0 SOL</span></div>
+            <div class="input-label">
+              <span>Total</span>
+              <span style="color:var(--neon3); cursor:pointer;" id="trade-panel-bal" onclick="window.setAmount(parseFloat(this.textContent) || 0)" title="Click to max balance">0.000 SOL</span>
+            </div>
             <input class="input" placeholder="0.0" type="number" step="0.1" id="trade-amount"/>
           </div>
           
@@ -3726,6 +3729,10 @@ window.loadRealPortfolio = async function() {
       const solBalance = (bal / 1e9);
       if (solBalEl) solBalEl.textContent = solBalance.toFixed(3) + ' SOL';
 
+      // 🔥 UPDATE TURBOTRADER PANEL BALANCE
+      const tradeBalEl = document.getElementById('trade-panel-bal');
+      if (tradeBalEl) tradeBalEl.textContent = solBalance.toFixed(3) + ' SOL';
+      
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
       const activeTokens = tokenAccounts.value.filter(acc => acc.account.data.parsed.info.tokenAmount.uiAmount > 0);
       
