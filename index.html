@@ -616,6 +616,24 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
            Your keys, your coins. We never store your private keys or have access to your funds. Every deployment transaction is securely signed directly in your own wallet.
          </div>
       </div>
+      
+      <div class="card" style="padding: 16px; margin-top: 16px; border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.05);">
+        <div style="font-size:12px; color:var(--neon4); text-transform:uppercase; letter-spacing:0.5px; font-weight:800; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i data-lucide="shield-alert" class="lucide-sm"></i> Algorithmic Profit Shield</div>
+        <div style="font-size:12px; color:var(--text2); margin-bottom:16px;">Automatically lock all buy orders if your total unrealized profit hits your target. Protect your daily gains from over-trading.</div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <span style="color:var(--white); font-weight:700; font-size:13px;">Enable Profit Shield</span>
+          <label class="toggle"><input type="checkbox" id="shield-toggle" onchange="window.saveShieldSettings()"/><span class="toggle-slider"></span></label>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="color:var(--text2); font-size:12px; font-weight:600;">Target Profit to Lock</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:var(--neon3); font-weight:800;">+$</span>
+            <input class="input" type="number" id="shield-target" value="500" style="width:100px; padding:6px 10px; text-align:right; font-size:13px; font-weight:700; color:var(--white);" onchange="window.saveShieldSettings()"/>
+          </div>
+        </div>
+      </div>
 
       <div class="card" style="padding:40px 32px; text-align:center; transition: transform 0.3s; cursor: default;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
          <div class="security-shield" style="margin: 0 auto 24px; width:72px; height:72px; font-size:36px; background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(124,58,237,.05)); border-color:rgba(6,182,212,.4);">🔒</div>
@@ -3491,25 +3509,7 @@ window.initChart = async function() {
     console.error("[Chart] Network error.", e);
     initBlankSlate();
   }
-
-  // 1. Get Swap Transaction from Jupiter
-        const targetUrl = 'https://quote-api.jup.ag/v6/swap';
-
-        const swapReq = await fetch(targetUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                quoteResponse: window.currentJupiterQuote,
-                userPublicKey: window.connectedWallet.publicKey.toString(),
-                wrapAndUnwrapSol: true,
-                dynamicComputeUnitLimit: true,
-                prioritizationFeeLamports: "auto" 
-            })
-        });
-
-        const swapRes = await swapReq.json();
-        if (!swapRes.swapTransaction) throw new Error("Failed to build transaction");
-      }
+};
   // ============================================================
   // TRENCHES FILTER ENGINE
   // ============================================================
@@ -3885,6 +3885,9 @@ window.loadRealPortfolio = async function() {
       let totalPnL = 0;
       let html = '';
       
+      // 🔥 EXPORT PNL FOR THE ALGORITHMIC RISK VAULT
+      window.globalUnrealizedPnL = totalPnL;
+      
       window.currentPortfolioData = []; // Store for the Export/Nuke functions
 
       activeTokens.forEach(acc => {
@@ -4146,6 +4149,33 @@ window.loadRealPortfolio = async function() {
   };
 
   // ============================================================
+// ALGORITHMIC RISK VAULT (PROFIT SHIELD)
+// ============================================================
+window.shieldSettings = JSON.parse(localStorage.getItem('pumpLab_shield')) || { active: false, target: 500 };
+
+window.saveShieldSettings = function() {
+    const toggle = document.getElementById('shield-toggle');
+    const target = document.getElementById('shield-target');
+    
+    if (toggle && target) {
+        window.shieldSettings.active = toggle.checked;
+        window.shieldSettings.target = parseFloat(target.value) || 0;
+        localStorage.setItem('pumpLab_shield', JSON.stringify(window.shieldSettings));
+        window.showToast("Risk Vault settings updated", "success");
+    }
+};
+
+// Sync the UI when the settings modal is opened
+const originalRenderHotkeys = window.renderHotkeys;
+window.renderHotkeys = function() {
+    if (originalRenderHotkeys) originalRenderHotkeys();
+    const toggle = document.getElementById('shield-toggle');
+    const target = document.getElementById('shield-target');
+    if (toggle) toggle.checked = window.shieldSettings.active;
+    if (target) target.value = window.shieldSettings.target;
+};
+
+  // ============================================================
   // QUICK SNIPE EXECUTION (Fetches Quote)
   // ============================================================
   window.executeSnipe = function(event, symbol, amount, isSell = false) {
@@ -4154,6 +4184,14 @@ window.loadRealPortfolio = async function() {
     if (!window.connectedWallet) {
       window.showToast("Please connect your wallet to snipe", "warning");
       return window.showModal('walletModal');
+    }
+
+    // 🔥 ALGORITHMIC INTERCEPTOR: THE RISK VAULT
+    if (!isSell && window.shieldSettings?.active) {
+        if (window.globalUnrealizedPnL !== undefined && window.globalUnrealizedPnL >= window.shieldSettings.target) {
+            window.showToast(`🛡️ Profit Shield Active! You hit your +$${window.shieldSettings.target} goal. Buying is locked.`, "warning");
+            return;
+        }
     }
 
     // Find the real contract address from our terminal cache
@@ -4195,11 +4233,10 @@ window.loadRealPortfolio = async function() {
     window.showToast("Confirming trade via Jupiter Aggregator...", "info");
 
     try {
-        // 🔥 1. Get Swap Transaction from Jupiter (WRAPPED IN CORS PROXY)
+        // 🔥 Clean direct call to Jupiter
         const targetUrl = 'https://quote-api.jup.ag/v6/swap';
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-        const swapReq = await fetch(proxyUrl, {
+        const swapReq = await fetch(targetUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4207,7 +4244,7 @@ window.loadRealPortfolio = async function() {
                 userPublicKey: window.connectedWallet.publicKey.toString(),
                 wrapAndUnwrapSol: true,
                 dynamicComputeUnitLimit: true,
-                prioritizationFeeLamports: "auto" // Anti-MEV Priority Fee
+                prioritizationFeeLamports: "auto" 
             })
         });
 
