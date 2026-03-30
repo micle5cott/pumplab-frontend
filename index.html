@@ -3492,16 +3492,23 @@ window.initChart = async function() {
     initBlankSlate();
   }
 
-  window.chartResizeObserver = new ResizeObserver(entries => {
-    if (entries.length === 0 || entries[0].target !== container) return;
-    try { 
-        chart.applyOptions({ width: entries[0].contentRect.width, height: entries[0].contentRect.height });
-    } catch(e) {}
-  });
-  window.chartResizeObserver.observe(container);
-  
-  chart.timeScale().fitContent();
-};
+  // 1. Get Swap Transaction from Jupiter
+        const targetUrl = 'https://quote-api.jup.ag/v6/swap';
+
+        const swapReq = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                quoteResponse: window.currentJupiterQuote,
+                userPublicKey: window.connectedWallet.publicKey.toString(),
+                wrapAndUnwrapSol: true,
+                dynamicComputeUnitLimit: true,
+                prioritizationFeeLamports: "auto" 
+            })
+        });
+
+        const swapRes = await swapReq.json();
+        if (!swapRes.swapTransaction) throw new Error("Failed to build transaction");
 
   // ============================================================
   // TRENCHES FILTER ENGINE
@@ -4117,11 +4124,10 @@ window.loadRealPortfolio = async function() {
           const rawAmount = Math.floor(amount * Math.pow(10, inputDecimals));
           const slippageBps = 1500;
 
-          // 🔥 Wrap the Jupiter URL in the CORS Proxy
+          // 🔥 Clean direct call to Jupiter
           const targetUrl = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${rawAmount}&slippageBps=${slippageBps}`;
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-          const res = await fetch(proxyUrl);
+          const res = await fetch(targetUrl);
           const quoteResponse = await res.json();
           
           window.currentJupiterQuote = quoteResponse;
