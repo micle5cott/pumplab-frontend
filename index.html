@@ -3887,7 +3887,7 @@ window.loadRealPortfolio = async function() {
       
       // 🔥 EXPORT PNL FOR THE ALGORITHMIC RISK VAULT
       window.globalUnrealizedPnL = totalPnL;
-      
+
       window.currentPortfolioData = []; // Store for the Export/Nuke functions
 
       activeTokens.forEach(acc => {
@@ -4127,8 +4127,8 @@ window.loadRealPortfolio = async function() {
           const rawAmount = Math.floor(amount * Math.pow(10, inputDecimals));
           const slippageBps = 1500;
 
-          // 🔥 Clean direct call to Jupiter
-          const targetUrl = `https://quote-api.jup.ag/v6/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${rawAmount}&slippageBps=${slippageBps}`;
+          // 🔥 REROUTED THROUGH RENDER BACKEND
+          const targetUrl = `https://server-js-nu0u.onrender.com/api/jup-quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${rawAmount}&slippageBps=${slippageBps}`;
 
           const res = await fetch(targetUrl);
           const quoteResponse = await res.json();
@@ -4233,8 +4233,8 @@ window.renderHotkeys = function() {
     window.showToast("Confirming trade via Jupiter Aggregator...", "info");
 
     try {
-        // 🔥 Clean direct call to Jupiter
-        const targetUrl = 'https://quote-api.jup.ag/v6/swap';
+        // 🔥 REROUTED THROUGH RENDER BACKEND
+        const targetUrl = 'https://server-js-nu0u.onrender.com/api/jup-swap';
 
         const swapReq = await fetch(targetUrl, {
             method: 'POST',
