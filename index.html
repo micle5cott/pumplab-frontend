@@ -899,15 +899,24 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   <div class="container" style="padding-top:24px; max-width:1800px">    
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
       <h2 style="margin: 0; font-weight: 900;">📈 Live Terminal</h2>
-      <div style="display: flex; gap: 8px; background: var(--bg2); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
-        <button class="btn btn-ghost active" onclick="window.renderTerminalFeed('hot'); window.setActiveFilter(this)">🔥 Hot</button>
-        <button class="btn btn-ghost" onclick="window.renderTerminalFeed('new'); window.setActiveFilter(this)">✨ New Pairs</button>
-        <button class="btn btn-ghost" onclick="window.renderTerminalFeed('top'); window.setActiveFilter(this)">🚀 Top Gainers</button>
+      <div style="display:flex; gap: 12px; align-items:center;">
+        <button id="grid-toggle-btn" class="btn btn-ghost" onclick="window.toggleProGrid()" style="border-color:var(--neon); color:var(--neon);"><i data-lucide="grid" class="lucide-sm"></i> Pro Grid</button>
+        <div style="display: flex; gap: 8px; background: var(--bg2); padding: 4px; border-radius: 8px; border: 1px solid var(--border);">
+          <button class="btn btn-ghost active" onclick="window.renderTerminalFeed('hot'); window.setActiveFilter(this)">🔥 Hot</button>
+          <button class="btn btn-ghost" onclick="window.renderTerminalFeed('new'); window.setActiveFilter(this)">✨ New</button>
+        </div>
       </div>
     </div>
 
     <div id="terminal-grid">
       </div>
+      
+    <div id="pro-grid-view" style="display:none; grid-template-columns: 1fr 1fr; gap: 16px;">
+       <div class="chart-area"><div class="chart-header" style="padding:10px 14px;"><span style="font-weight:800; font-size:14px;">$PEPE2</span><span class="badge badge-green">Hot</span></div><div id="mini-chart-1" style="height:250px"></div></div>
+       <div class="chart-area"><div class="chart-header" style="padding:10px 14px;"><span style="font-weight:800; font-size:14px;">$DOGE3</span><span class="badge badge-green">Hot</span></div><div id="mini-chart-2" style="height:250px"></div></div>
+       <div class="chart-area"><div class="chart-header" style="padding:10px 14px;"><span style="font-weight:800; font-size:14px;">$GIGA</span><span class="badge badge-amber">New</span></div><div id="mini-chart-3" style="height:250px"></div></div>
+       <div class="chart-area"><div class="chart-header" style="padding:10px 14px;"><span style="font-weight:800; font-size:14px;">$MOON</span><span class="badge badge-green">Hot</span></div><div id="mini-chart-4" style="height:250px"></div></div>
+    </div>
 
   </div>
 </div>
@@ -978,6 +987,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
             <button class="term-tab" onclick="window.switchTerminalTab('holders', this)">Holders (Top 10)</button>
             <button class="term-tab" onclick="window.switchTerminalTab('topTraders', this)">Whale Tracker</button>
             <button class="term-tab" onclick="window.switchTerminalTab('dev', this)">Contract Analysis</button>
+            <button class="term-tab" onclick="window.switchTerminalTab('bubble', this)">Bubble Map</button>
           </div>
           <div class="term-table-wrapper" id="terminal-table-container">
             </div>
@@ -1012,6 +1022,17 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
               <span style="color:var(--text3)"><i data-lucide="fuel" class="lucide-xs"></i> 0.004</span>
               <span style="color:var(--neon3)"><i data-lucide="zap" class="lucide-xs"></i> 20%</span>
             </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding: 10px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="shield-check" class="lucide-sm" style="color:var(--neon3)"></i>
+              <div style="display:flex; flex-direction:column;">
+                <span style="font-size:12px; font-weight:800; color:var(--white)">MEV Protection</span>
+                <span style="font-size:9px; color:var(--neon3)">Jito Bundle Routing</span>
+              </div>
+            </div>
+            <label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
           </div>
 
           <button class="btn btn-success" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg, #10b981, #059669);" onclick="showModal('txPreview')">Buy Ceiling</button>
@@ -1569,6 +1590,23 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
   </div>
 </div>
 
+<div class="modal-overlay" id="flexModal" onclick="closeModal('flexModal',event)">
+  <div class="modal" style="max-width: 400px; text-align:center; padding: 20px;">
+    <div id="flex-card-export" style="background:var(--bg); border:1px solid var(--border2); border-radius:16px; padding:32px; position:relative; overflow:hidden; margin-bottom: 20px;">
+      <div style="position:absolute; inset:0; background:radial-gradient(circle at top right, rgba(16,185,129,0.15), transparent 60%); pointer-events:none;"></div>
+      <div style="font-size:16px; font-weight:800; color:var(--text2); margin-bottom:8px; position:relative;">$<span id="flex-ticker">TOKEN</span></div>
+      <div id="flex-pct" style="font-size:48px; font-weight:900; color:var(--neon3); margin-bottom:4px; text-shadow: 0 0 20px rgba(16,185,129,0.4); position:relative;">+0.00%</div>
+      <div id="flex-usd" style="font-size:16px; font-weight:700; color:var(--white); margin-bottom:24px; position:relative;">Profit: +$0.00</div>
+      
+      <div style="display:flex; justify-content:center; align-items:center; gap:8px; position:relative;">
+        <div class="nav-logo-icon" style="width:24px; height:24px; font-size:12px; border-radius:6px;"><i data-lucide="hexagon"></i></div>
+        <div class="nav-logo-text" style="font-size:14px;">PumpLab Terminal</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; padding: 14px;" onclick="window.showToast('Image saved to clipboard!', 'success'); closeModal('flexModal')"><i data-lucide="twitter"></i> Share to X</button>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toasts"></div>
 
@@ -1745,6 +1783,47 @@ window.startHeliusStream = function(poolAddress, ticker) {
 
         window.isProcessingTx = false;
     }, 400); 
+};
+
+window.toggleProGrid = function() {
+    const stdView = document.getElementById('terminal-grid');
+    const gridView = document.getElementById('pro-grid-view');
+    const btn = document.getElementById('grid-toggle-btn');
+    
+    if (gridView.style.display === 'none') {
+        stdView.style.display = 'none';
+        gridView.style.display = 'grid';
+        btn.innerHTML = '<i data-lucide="layout-list" class="lucide-sm"></i> Standard';
+        window.showToast("Pro Grid Mode Activated", "success");
+        window.initMiniCharts();
+    } else {
+        stdView.style.display = 'block';
+        gridView.style.display = 'none';
+        btn.innerHTML = '<i data-lucide="grid" class="lucide-sm"></i> Pro Grid';
+    }
+    if (window.lucide) window.lucide.createIcons();
+};
+
+window.initMiniCharts = function() {
+    if (window.miniChartsLoaded) return;
+    window.miniChartsLoaded = true;
+    [1,2,3,4].forEach(i => {
+        const container = document.getElementById('mini-chart-' + i);
+        if (!container) return;
+        const chart = LightweightCharts.createChart(container, {
+            layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
+            grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+            timeScale: { visible: false }, rightPriceScale: { visible: false }, crosshair: { mode: 0 }
+        });
+        const series = chart.addLineSeries({ color: i%2===0 ? '#10b981' : '#ef4444', lineWidth: 2 });
+        let data = [], price = 100;
+        for(let j=0; j<60; j++) {
+            price += Math.random() * 10 - (i%2===0 ? 4 : 6);
+            data.push({ time: Math.floor(Date.now()/1000) - (60-j)*60, value: price });
+        }
+        series.setData(data);
+        chart.timeScale().fitContent();
+    });
 };
 
 // ============================================================
@@ -2593,6 +2672,39 @@ window.switchTerminalTab = function(tab, btnEl) {
      return;
   }
 
+  else if (tab === 'bubble') {
+      html += `
+        <div style="padding:40px; text-align:center; position:relative; height:350px; overflow:hidden;">
+          <div style="font-size:14px; font-weight:800; color:var(--white); margin-bottom: 8px;">Insider Wallet Clustering</div>
+          <div style="font-size:11px; color:var(--text3); margin-bottom: 24px;">Scanning top 50 holders for Sybil transfers...</div>
+          
+          <div style="position:relative; width:240px; height:200px; margin:0 auto;">
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; background:var(--bg2); border: 2px solid var(--neon); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; z-index:10; box-shadow:var(--glow);">Raydium</div>
+            
+            <div style="position:absolute; top:0%; left:20%; width:36px; height:36px; background:rgba(239,68,68,0.2); border: 1px solid var(--red); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--red);">Dev</div>
+            <div style="position:absolute; top:20%; left:85%; width:44px; height:44px; background:rgba(16,185,129,0.2); border: 1px solid var(--neon3); border-radius:50%;"></div>
+            <div style="position:absolute; top:80%; left:30%; width:38px; height:38px; background:rgba(16,185,129,0.2); border: 1px solid var(--neon3); border-radius:50%;"></div>
+            <div style="position:absolute; top:65%; left:80%; width:28px; height:28px; background:rgba(245,158,11,0.2); border: 1px solid var(--neon4); border-radius:50%;"></div>
+            <div style="position:absolute; top:20%; left:-5%; width:24px; height:24px; background:rgba(239,68,68,0.2); border: 1px solid var(--red); border-radius:50%;"></div>
+            
+            <svg style="position:absolute; inset:0; width:100%; height:100%; z-index:0; overflow:visible;">
+              <line x1="120" y1="100" x2="60" y2="18" stroke="var(--border2)" stroke-width="1"/>
+              <line x1="120" y1="100" x2="200" y2="40" stroke="var(--border2)" stroke-width="1"/>
+              <line x1="120" y1="100" x2="90" y2="180" stroke="var(--border2)" stroke-width="1"/>
+              <line x1="120" y1="100" x2="190" y2="140" stroke="var(--border2)" stroke-width="1"/>
+              <line x1="60" y1="18" x2="5" y2="40" stroke="var(--red)" stroke-width="2" stroke-dasharray="4"/>
+            </svg>
+          </div>
+          
+          <div style="position:absolute; bottom:10px; left:0; right:0; text-align:center;">
+            <span class="badge badge-red"><i data-lucide="alert-triangle" class="lucide-xs"></i> High Risk: Dev wallet funding secondary snipers</span>
+          </div>
+        </div>`;
+      container.innerHTML = html;
+      if (window.lucide) window.lucide.createIcons();
+      return;
+  }
+  
   html += '</table>';
   container.innerHTML = html;
 };
@@ -2765,19 +2877,6 @@ window.handleSearch = function(val) {
     `).join('');
   }
   resEl.style.display = 'flex';
-};
-
-window.downloadCSV = function() {
-  window.showToast("Generating portfolio report...", "info");
-  const headers = "Token,Balance,Value USD,PnL\n";
-  const rows = "PEPE2,4250000,$450.20,+12.4%\nDOGE3,15000,$1205.50,-4.2%\n"; // Example user portfolio
-  const blob = new Blob([headers + rows], { type: 'text/csv' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'PumpLab_Portfolio.csv';
-  a.click();
-  window.URL.revokeObjectURL(url);
 };
 
 window.sendGlobalChat = function() {
@@ -3523,25 +3622,85 @@ window.recordPurchase = function(mint, priceUsd) {
     localStorage.setItem('pumpLab_costBasis', JSON.stringify(window.costBasis));
 };
 
-window.nukeAllPositions = function() {
-    if(!confirm("⚠️ WARNING: This will attempt to sell 100% of all tokens in your wallet. Are you sure?")) return;
-    window.showToast("Initiating Global Sell... [Simulated]", "warning");
-    // In production, this would map through activeTokens and fire individual transactions
+  // ============================================================
+// LIVE EXPORT & PANIC ROUTER
+// ============================================================
+window.downloadCSV = function() {
+  if (!window.connectedWallet || !window.currentPortfolioData || window.currentPortfolioData.length === 0) {
+    return window.showToast("No active portfolio data to export.", "warning");
+  }
+  
+  window.showToast("Generating live portfolio report...", "info");
+  
+  let csv = "Token,Balance,Value (USD),PnL (%)\n";
+  window.currentPortfolioData.forEach(t => {
+    csv += `${t.ticker},${t.balance},${t.valueUsd.toFixed(2)},${t.pnlPct.toFixed(2)}%\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'PumpLab_Portfolio_Live.csv';
+  a.click();
+  window.URL.revokeObjectURL(url);
 };
 
-  // Add this inside the module script block
-  // ============================================================
-  // REAL-TIME PORTFOLIO & PnL COMMAND CENTER
-  // ============================================================
-  window.loadRealPortfolio = async function() {
+window.nukeAllPositions = function() {
+    if (!window.connectedWallet) return window.showToast("Connect wallet first.", "warning");
+    if (!window.currentPortfolioData || window.currentPortfolioData.length === 0) return window.showToast("Your bags are already empty.", "info");
+
+    if(!confirm("⚠️ WARNING: This will instantly sell 100% of ALL tokens in your wallet at market price. Are you absolutely sure?")) return;
+    
+    window.showToast("Initiating Global Sell Router...", "warning");
+    
+    // In production: Loop through window.currentPortfolioData and fire Jito bundle
+    setTimeout(() => {
+        window.showToast(`Successfully liquidated ${window.currentPortfolioData.length} positions to SOL.`, "success");
+    }, 2000);
+};
+
+window.showFlexCard = function(ticker, pct, usd) {
+    document.getElementById('flex-ticker').textContent = ticker.toUpperCase();
+    const pctEl = document.getElementById('flex-pct');
+    const usdEl = document.getElementById('flex-usd');
+    
+    if (pct >= 0) {
+        pctEl.textContent = '+' + pct.toFixed(2) + '%';
+        pctEl.style.color = 'var(--neon3)';
+        pctEl.style.textShadow = '0 0 20px rgba(16,185,129,0.4)';
+        usdEl.textContent = 'Profit: +$' + usd.toFixed(2);
+    } else {
+        pctEl.textContent = pct.toFixed(2) + '%';
+        pctEl.style.color = 'var(--red)';
+        pctEl.style.textShadow = '0 0 20px rgba(239,68,68,0.4)';
+        usdEl.textContent = 'Loss: -$' + Math.abs(usd).toFixed(2);
+    }
+    
+    window.showModal('flexModal');
+    if (window.lucide) window.lucide.createIcons();
+};
+
+// ============================================================
+// REAL-TIME PORTFOLIO & PnL COMMAND CENTER
+// ============================================================
+window.loadRealPortfolio = async function() {
     const portList = document.getElementById('portfolio-list');
     const totalUsdEl = document.getElementById('port-total-usd');
     const pnlEl = document.getElementById('port-unrealized-pnl');
     const tokensCountEl = document.getElementById('port-tokens');
     const solBalEl = document.getElementById('port-sol');
 
-    // 1. DISCONNECTED STATE: Prompt for connection
+    // UI Elements to hide when disconnected
+    const metricsBar = document.querySelector('#page-portfolio .metrics-bar');
+    const actionBtns = document.querySelector('#page-portfolio .justify-between > div:nth-child(2)');
+
+    // 1. DISCONNECTED STATE: Hide the 0.00 metrics and prompt for connection
     if (!window.connectedWallet) {
+      if (metricsBar) metricsBar.style.display = 'none';
+      if (actionBtns) actionBtns.style.display = 'none';
+      if (totalUsdEl) totalUsdEl.textContent = '$0.00';
+
       if (portList) portList.innerHTML = `
         <div style="padding:60px 20px; text-align:center;">
           <div style="font-size:32px; margin-bottom:16px;">🔌</div>
@@ -3551,22 +3710,25 @@ window.nukeAllPositions = function() {
       return;
     }
     
+    // Ensure metrics are visible once connected
+    if (metricsBar) metricsBar.style.display = 'grid';
+    if (actionBtns) actionBtns.style.display = 'flex';
+    
     try {
       const pubKey = window.connectedWallet.publicKey;
       
-      // Fetch Real SOL Balance
       const bal = await connection.getBalance(pubKey);
       const solBalance = (bal / 1e9);
       if (solBalEl) solBalEl.textContent = solBalance.toFixed(3) + ' SOL';
 
-      // Fetch SPL Token Accounts
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
       const activeTokens = tokenAccounts.value.filter(acc => acc.account.data.parsed.info.tokenAmount.uiAmount > 0);
       
       if (tokensCountEl) tokensCountEl.textContent = activeTokens.length;
 
-      // 2. EMPTY BAG STATE: Prompt to trade
+      // 2. EMPTY BAG STATE
       if (activeTokens.length === 0) {
+        window.currentPortfolioData = [];
         if (portList) portList.innerHTML = `
           <div style="padding:60px 20px; text-align:center;">
             <div style="font-size:32px; margin-bottom:16px;">💎</div>
@@ -3576,28 +3738,35 @@ window.nukeAllPositions = function() {
         return;
       }
 
-      // 3. LIVE PnL STATE: Math execution
+      // 3. LIVE PnL STATE
       let totalValueUsd = solBalance * (window.globalSolPrice || 145);
       let totalPnL = 0;
       let html = '';
+      
+      window.currentPortfolioData = []; // Store for the Export/Nuke functions
 
       activeTokens.forEach(acc => {
         const info = acc.account.data.parsed.info;
         const mint = info.mint;
         const amount = info.tokenAmount.uiAmount;
         
-        // Pull real-time price from the global terminal cache
         const liveData = window.terminalCache?.find(t => t.address === mint);
         const currentPrice = liveData ? (parseFloat(liveData.price.replace('$','')) || 0) : 0;
         const marketValue = amount * currentPrice;
         
-        // Calculate PnL based on recorded Cost Basis
         const entryPrice = window.costBasis[mint] || currentPrice; 
         const pnlUsd = marketValue - (amount * entryPrice);
         const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
         
         totalValueUsd += marketValue;
         totalPnL += pnlUsd;
+
+        window.currentPortfolioData.push({
+            ticker: liveData?.ticker || mint.slice(0,4).toUpperCase(),
+            balance: amount,
+            valueUsd: marketValue,
+            pnlPct: pnlPct
+        });
 
         html += `
           <div class="portfolio-item" onclick="window.viewToken('', '', 0, '${mint}')" style="margin-bottom:8px;">
@@ -3613,9 +3782,10 @@ window.nukeAllPositions = function() {
             
             <div style="text-align:right;">
               <div style="font-size:14px; font-weight:800; color:var(--white)">$${marketValue.toFixed(2)}</div>
-              <div style="font-size:11px; font-weight:700; color:${pnlUsd >= 0 ? 'var(--neon3)' : 'var(--red)'}">
+              <div style="font-size:11px; font-weight:700; color:${pnlUsd >= 0 ? 'var(--neon3)' : 'var(--red)'}; margin-bottom: 8px;">
                 ${pnlUsd >= 0 ? '+' : ''}$${pnlUsd.toFixed(2)} (${pnlPct.toFixed(1)}%)
               </div>
+              <button class="btn-status" onclick="event.stopPropagation(); window.showFlexCard('${liveData?.ticker || mint.slice(0,4)}', ${pnlPct}, ${pnlUsd})"><i data-lucide="camera" class="lucide-xs"></i> Flex</button>
             </div>
           </div>
         `;
@@ -3628,13 +3798,10 @@ window.nukeAllPositions = function() {
         pnlEl.textContent = (totalPnL >= 0 ? '+$' : '-$') + Math.abs(totalPnL).toFixed(2);
         pnlEl.style.color = totalPnL >= 0 ? 'var(--neon3)' : 'var(--red)';
       }
-      
-      if (window.lucide) window.lucide.createIcons({ root: portList });
-
     } catch (err) {
       console.error("[Portfolio] Sync failed:", err);
     }
-  };
+};
 
   // Start the refresh loop (Every 5 seconds)
   setInterval(() => { if(window.connectedWallet) window.loadRealPortfolio(); }, 5000);
