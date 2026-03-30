@@ -1603,7 +1603,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
         <div class="nav-logo-text" style="font-size:14px;">PumpLab Terminal</div>
       </div>
     </div>
-    <button class="btn btn-primary" style="width:100%; justify-content:center; padding: 14px;" onclick="window.showToast('Image saved to clipboard!', 'success'); closeModal('flexModal')"><i data-lucide="𝕏"></i> Share to X</button>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; padding: 14px;" onclick="window.showToast('Image saved to clipboard!', 'success'); closeModal('flexModal')"><span style="font-size: 16px; font-weight: 900;">𝕏</span> Share to X</button>
   </div>
 </div>
 
@@ -3509,7 +3509,7 @@ window.initChart = async function() {
               <div class="trench-row2">
                 <span>${t.age} ago</span> • <span>Liq: $${(liq/1000).toFixed(1)}k</span>
                 <div class="trench-socials" style="margin-left:auto; display:flex; gap:6px;">
-                  ${hasX ? '<span title=""message-circle"><i data-lucide=""message-circle" class="lucide-xs"></i></span>' : ''}
+                  ${hasX ? '<span title="X/Twitter"><i data-lucide="message-circle" class="lucide-xs"></i></span>' : ''}
                   ${hasTg ? '<span title="Telegram"><i data-lucide="send" class="lucide-xs"></i></span>' : ''}
                   <span title="Website"><i data-lucide="globe" class="lucide-xs"></i></span>
                 </div>
