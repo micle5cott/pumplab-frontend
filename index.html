@@ -1055,7 +1055,20 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
             </div>
             <label class="toggle"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
           </div>
-
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding: 10px; background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.3); border-radius: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="trending-down" class="lucide-sm" style="color:var(--neon)"></i>
+              <div style="display:flex; flex-direction:column;">
+                <span style="font-size:12px; font-weight:800; color:var(--white)">Trailing Stop-Loss</span>
+                <span style="font-size:9px; color:var(--text3)">Auto-sell if price drops from peak</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <input type="number" id="trailing-pct" class="input" value="15" style="width: 50px; padding: 4px; text-align: center; font-size: 12px; background: var(--bg);" />
+              <span style="font-size:12px; color:var(--text2); font-weight:800;">%</span>
+              <label class="toggle"><input type="checkbox" id="trailing-toggle"/><span class="toggle-slider"></span></label>
+            </div>
+          </div>
           <button class="btn btn-success" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg, #10b981, #059669);" onclick="window.triggerManualTrade()">Buy Ceiling</button>
         </div>
 
@@ -3942,6 +3955,56 @@ window.showFlexCard = function(ticker, pct, usd) {
       }
   });
 
+  // ============================================================
+// ALGORITHMIC TRAILING STOP ENGINE
+// ============================================================
+window.trailingStops = JSON.parse(localStorage.getItem('pumpLab_trailingStops')) || {};
+
+// Called automatically when a Buy order completes
+window.registerTrailingStop = function(mint, currentPrice) {
+    const toggle = document.getElementById('trailing-toggle');
+    const pctInput = document.getElementById('trailing-pct');
+    
+    if (toggle && toggle.checked) {
+        const pct = parseFloat(pctInput.value) || 15;
+        window.trailingStops[mint] = {
+            trailPct: pct,
+            highWaterMark: currentPrice
+        };
+        localStorage.setItem('pumpLab_trailingStops', JSON.stringify(window.trailingStops));
+        window.showToast(`🎯 Trailing Stop set at ${pct}% for this position`, "success");
+    }
+};
+
+// The Monitoring Loop (Checks prices every 5 seconds)
+window.monitorTrailingStops = function(mint, currentPrice, symbol) {
+    if (!window.trailingStops[mint]) return;
+    
+    const stopConfig = window.trailingStops[mint];
+    
+    // 1. If the price went UP, we move the "ratchet" up!
+    if (currentPrice > stopConfig.highWaterMark) {
+        stopConfig.highWaterMark = currentPrice;
+        localStorage.setItem('pumpLab_trailingStops', JSON.stringify(window.trailingStops));
+        console.log(`[Engine] Trailing Stop for ${symbol} moved up. New High: $${currentPrice}`);
+    }
+    
+    // 2. Calculate the exact trigger price based on the highest point reached
+    const triggerPrice = stopConfig.highWaterMark * (1 - (stopConfig.trailPct / 100));
+    
+    // 3. If the current price drops below the trigger... EXECUTE SELL!
+    if (currentPrice <= triggerPrice && currentPrice > 0) {
+        window.showToast(`🚨 Trailing Stop Triggered for $${symbol}! Securing profits...`, "warning");
+        
+        // Remove the stop so it doesn't fire twice
+        delete window.trailingStops[mint];
+        localStorage.setItem('pumpLab_trailingStops', JSON.stringify(window.trailingStops));
+        
+        // Hijack the terminal and fire a 100% Market Sell
+        window.executeSnipe(null, symbol, "100%", true);
+    }
+};
+
 // ============================================================
   // PUMPLAB PRO: WEB3 PAYMENT GATEWAY
   // ============================================================
@@ -4084,6 +4147,10 @@ window.loadRealPortfolio = async function() {
         
         const liveData = window.terminalCache?.find(t => t.address === mint);
         const currentPrice = liveData ? (parseFloat(liveData.price.replace('$','')) || 0) : 0;
+        
+        // 🔥 NEW: Check the algorithmic stop loss
+        const ticker = liveData?.ticker || mint.slice(0,4).toUpperCase();
+        window.monitorTrailingStops(mint, currentPrice, ticker);
         const marketValue = amount * currentPrice;
         
         const entryPrice = window.costBasis[mint] || currentPrice; 
@@ -4468,6 +4535,8 @@ window.renderHotkeys = function() {
         if (!window.activeTradeContext.isSell) {
             const currentPrice = parseFloat(document.getElementById('chart-price').textContent.replace('$',''));
             window.recordPurchase(window.activeTradeContext.mint, currentPrice);
+            // 🔥 NEW: Register the stop loss if the user enabled it
+            window.registerTrailingStop(window.activeTradeContext.mint, currentPrice);
         }
 
     } catch (e) {
