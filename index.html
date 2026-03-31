@@ -1128,7 +1128,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
       <div id="pro-paywall" style="position: absolute; inset: 40px 0 0 0; background: rgba(6,6,14,0.7); backdrop-filter: blur(8px); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
         <div style="font-size: 16px; font-weight: 800; color: var(--white); margin-bottom: 8px;">Unlock the Alpha Scanner</div>
         <div style="font-size: 12px; color: var(--text2); margin-bottom: 16px; text-align: center; max-width: 300px;">Detect insider accumulation and volume spikes before the price pumps.</div>
-        <button class="btn btn-primary" onclick="window.unlockProTier()"><i data-lucide="unlock" class="lucide-sm"></i> Upgrade to PumpLab PRO</button>
+        <button class="btn btn-primary" onclick="window.openProCheckout()"><i data-lucide="unlock" class="lucide-sm"></i> Upgrade to PumpLab PRO</button>
       </div>
 
       <div id="zscore-feed" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; filter: blur(4px); transition: filter 0.3s ease;">
@@ -1632,6 +1632,26 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('txPreview')">Cancel</button>
       <button class="btn btn-success" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="executeTrade()">⚡ Snipe Now</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="proCheckoutModal" onclick="closeModal('proCheckoutModal',event)">
+  <div class="modal">
+    <div class="modal-title"><i data-lucide="zap" style="color:var(--neon4)"></i> Upgrade to PumpLab PRO</div>
+    <div class="modal-body">
+      Get instant access to the real-time Z-Score Anomaly Scanner. Detect insider accumulation, MEV front-running, and massive volume spikes before the token hits the top gainers list.
+      
+      <div style="background:var(--bg); border:1px solid var(--border2); border-radius:10px; padding:16px; margin-top:16px; margin-bottom:12px; font-size:13px; display:flex; flex-direction:column; gap:10px">
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--text3)">Service</span><span style="font-weight:700; color:var(--white)">PumpLab PRO (Lifetime)</span></div>
+        <div style="display:flex; justify-content:space-between"><span style="color:var(--text3)">Billed to</span><span style="font-weight:700; font-family:monospace;" id="pro-wallet-display">—</span></div>
+        <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border); padding-top:10px"><span style="color:var(--text3)">Total Cost</span><span style="font-weight:900; color:var(--neon3)">0.1 SOL</span></div>
+      </div>
+      <div class="info-box" style="margin:0">🔒 <span>Transaction is securely routed to the PumpLab Treasury via Solana Mainnet.</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('proCheckoutModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="window.processProPayment()" style="gap:8px"><i data-lucide="lock-open" class="lucide-sm"></i> Pay 0.1 SOL & Unlock</button>
     </div>
   </div>
 </div>
@@ -3912,6 +3932,79 @@ window.showFlexCard = function(ticker, pct, usd) {
     window.showModal('flexModal');
     if (window.lucide) window.lucide.createIcons();
 };
+
+// Check if they already paid when the page loads
+  window.addEventListener('load', () => {
+      if (localStorage.getItem('pumpLab_isProUser') === 'true') {
+          setTimeout(() => {
+              if (typeof window.unlockProTier === 'function') window.unlockProTier();
+          }, 1000);
+      }
+  });
+  
+// ============================================================
+  // PUMPLAB PRO: WEB3 PAYMENT GATEWAY
+  // ============================================================
+  
+  window.openProCheckout = function() {
+      if (!window.connectedWallet) {
+          window.showToast("Please connect your wallet first", "warning");
+          return window.showModal('walletModal');
+      }
+      
+      // Show the user's connected wallet address in the receipt
+      const pubKey = window.connectedWallet.publicKey.toString();
+      const displayKey = pubKey.slice(0, 6) + '...' + pubKey.slice(-4);
+      document.getElementById('pro-wallet-display').textContent = displayKey;
+      
+      window.showModal('proCheckoutModal');
+  };
+
+  window.processProPayment = async function() {
+      if (!window.connectedWallet) return window.showToast("Wallet disconnected", "warning");
+
+      const walletPubkey = window.connectedWallet.publicKey;
+      
+      // 🔥 YOUR TREASURY WALLET (Where the 0.1 SOL goes)
+      const TREASURY_WALLET = new PublicKey("FkLhGfT1Q83FVCH5CDZ6oLbeZW9yw7etJWQn6SWmtpUg"); 
+      const PRO_FEE_SOL = 0.1;
+      const lamports = Math.floor(PRO_FEE_SOL * 1e9);
+
+      try {
+          window.showToast("Please approve the payment in Phantom...", "info");
+          
+          const tx = new Transaction().add(
+              SystemProgram.transfer({
+                  fromPubkey: walletPubkey,
+                  toPubkey: TREASURY_WALLET,
+                  lamports: lamports
+              })
+          );
+
+          tx.feePayer = walletPubkey;
+          tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+          // Ask Phantom to sign it
+          const signed = await window.connectedWallet.signTransaction(tx);
+          
+          window.showToast("Payment signed. Confirming on blockchain...", "info");
+          
+          // Send to the network
+          const signature = await connection.sendRawTransaction(signed.serialize());
+          await connection.confirmTransaction(signature, 'confirmed');
+
+          // SUCCESS! Unlock the UI
+          window.closeModal('proCheckoutModal');
+          window.unlockProTier();
+          
+          // Optional: Save to localStorage so they don't have to pay again on refresh
+          localStorage.setItem('pumpLab_isProUser', 'true');
+
+      } catch (err) {
+          console.error("Payment Error:", err);
+          window.showToast("Payment failed or was cancelled.", "warning");
+      }
+  };
 
 // ============================================================
 // REAL-TIME PORTFOLIO & PnL COMMAND CENTER
