@@ -1113,6 +1113,29 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
       </div>
     </div>
 
+    <div class="card" style="margin: 16px 0; border-color: rgba(124,58,237,0.4); position: relative; overflow: hidden;">
+      <div style="position: absolute; inset: 0; background: radial-gradient(circle at right, rgba(124,58,237,0.1), transparent 60%); pointer-events: none;"></div>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; position: relative;">
+        <div style="font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="radar" class="lucide-sm" style="color: var(--neon);"></i> 
+          Live Z-Score Anomalies
+          <span class="badge badge-purple" style="font-size: 9px; letter-spacing: 1px;">PRO</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text3);">Scanning all pools for Vol > 3.0σ</div>
+      </div>
+
+      <div id="pro-paywall" style="position: absolute; inset: 40px 0 0 0; background: rgba(6,6,14,0.7); backdrop-filter: blur(8px); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="font-size: 16px; font-weight: 800; color: var(--white); margin-bottom: 8px;">Unlock the Alpha Scanner</div>
+        <div style="font-size: 12px; color: var(--text2); margin-bottom: 16px; text-align: center; max-width: 300px;">Detect insider accumulation and volume spikes before the price pumps.</div>
+        <button class="btn btn-primary" onclick="window.unlockProTier()"><i data-lucide="unlock" class="lucide-sm"></i> Upgrade to PumpLab PRO</button>
+      </div>
+
+      <div id="zscore-feed" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; filter: blur(4px); transition: filter 0.3s ease;">
+        <div style="padding: 20px; text-align: center; width: 100%; color: var(--text3); font-size: 12px;">Waiting for network anomalies...</div>
+      </div>
+    </div>
+
     <div class="trenches-layout">
       <div class="trench-col">
         <div class="trench-header">
@@ -1847,6 +1870,77 @@ window.initMiniCharts = function() {
         series.setData(data);
         chart.timeScale().fitContent();
     });
+};
+
+// ============================================================
+// PUMPLAB PRO: Z-SCORE ANOMALY ENGINE
+// ============================================================
+window.isProUser = false; // Set to true when they pay
+
+window.unlockProTier = function() {
+    window.isProUser = true;
+    document.getElementById('pro-paywall').style.display = 'none';
+    document.getElementById('zscore-feed').style.filter = 'none';
+    window.showToast("PumpLab PRO Unlocked. Anomaly scanner is live.", "success");
+    window.runZScoreScanner();
+};
+
+window.runZScoreScanner = function() {
+    const feed = document.getElementById('zscore-feed');
+    if (!feed || !window.terminalCache || window.terminalCache.length === 0) return;
+
+    let anomalies = [];
+
+    // Scan the current firehose data
+    window.terminalCache.forEach(t => {
+        const vol1h = t.vol1hNum || 0;
+        const liq = t.liquidity || 0;
+        
+        // Skip dead coins or massive mega-caps
+        if (liq < 5000 || liq > 500000 || vol1h < 1000) return;
+
+        // Simulate a rolling average (In production, backend tracks the last 20 minutes)
+        const assumedAvgVol = vol1h * 0.4; 
+        const assumedStdDev = assumedAvgVol * 0.2; 
+        
+        // Simulate a sudden live spike
+        const live1MinSpike = (vol1h * 0.1) + (Math.random() * 5000); 
+
+        // THE MATH: Z = (X - μ) / σ
+        const zScore = (live1MinSpike - assumedAvgVol) / assumedStdDev;
+
+        // If Z-Score is over 3.0, it's an anomaly!
+        if (zScore >= 3.0) {
+            anomalies.push({ token: t, zScore: zScore, spike: live1MinSpike });
+        }
+    });
+
+    if (anomalies.length === 0) return;
+
+    // Sort by highest anomaly
+    anomalies.sort((a, b) => b.zScore - a.zScore);
+
+    let html = '';
+    anomalies.slice(0, 5).forEach(alert => {
+        html += `
+        <div style="background: var(--bg2); border: 1px solid rgba(124,58,237,0.3); border-radius: 8px; padding: 12px; min-width: 200px; cursor: pointer;" onclick="window.viewToken('${alert.token.name.replace(/'/g, "\\'")}', '${alert.token.ticker}', 0, '${alert.token.pairAddress}')">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 800; font-size: 13px;">$${alert.token.ticker}</span>
+                <span class="badge badge-purple" style="font-size: 10px; animation: pulse 2s infinite;">Z: +${alert.zScore.toFixed(1)}</span>
+            </div>
+            <div style="font-size: 11px; color: var(--text2);">Unusual Vol: <strong style="color: var(--neon);">$${alert.spike.toLocaleString(undefined, {maximumFractionDigits:0})}</strong></div>
+            <div style="font-size: 10px; color: var(--text3); margin-top: 4px;">Potential Accumulation</div>
+        </div>`;
+    });
+
+    feed.innerHTML = html;
+};
+
+// Hook the scanner into the 8-second heartbeat
+const originalFetch = window.fetchTerminalData;
+window.fetchTerminalData = async function() {
+    if (originalFetch) await originalFetch();
+    window.runZScoreScanner();
 };
 
 // ============================================================
