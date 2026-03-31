@@ -1059,14 +1059,20 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
             <div style="display:flex; align-items:center; gap:8px;">
               <i data-lucide="trending-down" class="lucide-sm" style="color:var(--neon)"></i>
               <div style="display:flex; flex-direction:column;">
-                <span style="font-size:12px; font-weight:800; color:var(--white)">Trailing Stop-Loss</span>
+                <span style="font-size:12px; font-weight:800; color:var(--white); display:flex; align-items:center; gap:6px;">
+                  Trailing Stop-Loss 
+                  <span class="badge badge-purple" style="font-size:8px; padding:2px 4px; letter-spacing:0.5px;">PRO</span>
+                </span>
                 <span style="font-size:9px; color:var(--text3)">Auto-sell if price drops from peak</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
               <input type="number" id="trailing-pct" class="input" value="15" style="width: 50px; padding: 4px; text-align: center; font-size: 12px; background: var(--bg);" />
               <span style="font-size:12px; color:var(--text2); font-weight:800;">%</span>
-              <label class="toggle"><input type="checkbox" id="trailing-toggle"/><span class="toggle-slider"></span></label>
+              <label class="toggle">
+                <input type="checkbox" id="trailing-toggle" onclick="return window.requireProAccess(event, 'Algorithmic Trailing Stops')"/>
+                <span class="toggle-slider"></span>
+              </label>
             </div>
           </div>
           <button class="btn btn-success" style="width:100%;justify-content:center;padding:14px;font-size:16px;font-weight:800;background:linear-gradient(135deg, #10b981, #059669);" onclick="window.triggerManualTrade()">Buy Ceiling</button>
@@ -4004,6 +4010,32 @@ window.monitorTrailingStops = function(mint, currentPrice, symbol) {
         window.executeSnipe(null, symbol, "100%", true);
     }
 };
+
+// ============================================================
+  // PUMPLAB PRO: UNIVERSAL ACCESS GUARD
+  // ============================================================
+  // Add: onclick="return window.requireProAccess(event, 'Feature Name')" to ANY element
+  window.requireProAccess = function(event, featureName) {
+      const isPro = localStorage.getItem('pumpLab_isProUser') === 'true';
+      
+      if (!isPro) {
+          // 1. Stop the checkbox/button from doing what it was about to do
+          if (event) {
+              event.preventDefault();
+              event.stopPropagation();
+          }
+          
+          // 2. Alert the user
+          window.showToast(`🔒 ${featureName} requires PumpLab PRO.`, "warning");
+          
+          // 3. Pop open the checkout automatically to capture the sale
+          window.openProCheckout();
+          
+          return false; // Access Denied
+      }
+      
+      return true; // Access Granted
+  };
 
 // ============================================================
   // PUMPLAB PRO: WEB3 PAYMENT GATEWAY
