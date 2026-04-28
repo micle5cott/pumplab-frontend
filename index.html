@@ -505,6 +505,7 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
     <div class="nav-link active" onclick="showPage('home');setActive(this)">Home</div>
     <div class="nav-link" onclick="showPage('launch');setActive(this)">Deploy Your Coin</div>
     <div class="nav-link" onclick="showPage('trenches');setActive(this)">Trenches</div>
+    <div class="nav-link" onclick="showPage('aegis');setActive(this)" style="color: var(--neon3);"><i data-lucide="cpu" class="lucide-sm"></i> Aegis Core</div>
     <div class="nav-link" onclick="showPage('security');setActive(this)">Security</div>
     <div class="nav-link" onclick="showPage('portfolio');setActive(this)">Portfolio</div>
   </div>
@@ -1351,7 +1352,59 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
     </div>
   </div>
 </div>
+<div class="page" id="page-aegis">
+  <div class="container" style="padding-top:24px; max-width:1200px">
+    
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px">
+      <div>
+        <div style="font-size:24px; font-weight:900; display:flex; align-items:center; gap:8px; color:var(--neon3);">
+          <i data-lucide="cpu"></i> Aegis Execution Engine
+        </div>
+        <div style="font-size:12px; color:var(--text2); margin-top:4px">Live telemetry from local algorithmic scalper.</div>
+      </div>
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-ghost" id="aegis-status-btn" style="border-color:var(--neon3); color:var(--neon3);">
+          <span class="live-dot"></span> LINK ACTIVE
+        </button>
+      </div>
+    </div>
 
+    <div class="metrics-bar" style="border-radius:12px; overflow:hidden; grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+      <div class="metric-card"><div class="metric-value" id="aegis-cash">0.00 SOL</div><div class="metric-label">Available Ammo</div></div>
+      <div class="metric-card"><div class="metric-value green" id="aegis-pnl">+$0.00</div><div class="metric-label">Unrealized PnL</div></div>
+      <div class="metric-card"><div class="metric-value cyan" id="aegis-active">0</div><div class="metric-label">Active Trenches</div></div>
+      <div class="metric-card"><div class="metric-value purple" id="aegis-mode">PAPER</div><div class="metric-label">Execution Mode</div></div>
+    </div>
+
+    <div class="grid-2" style="gap:16px;">
+      
+      <div class="term-card" style="height: 500px; display:flex; flex-direction:column;">
+        <div class="term-tabs" style="padding: 14px 16px;">
+          <span style="font-weight:700; color:var(--white);"><i data-lucide="target" class="lucide-sm"></i> Live Engagements</span>
+        </div>
+        <div class="term-table-wrapper" style="flex:1; max-height:none;">
+          <table class="term-table">
+            <thead><tr><th>Token</th><th>Invested</th><th>Current Val</th><th>Net PnL</th><th>Held</th></tr></thead>
+            <tbody id="aegis-positions-body">
+              <tr><td colspan="5" style="text-align:center; padding: 40px; color:var(--text3);">Awaiting telemetry data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="term-card" style="height: 500px; display:flex; flex-direction:column;">
+        <div class="term-tabs" style="padding: 14px 16px; justify-content:space-between;">
+          <span style="font-weight:700; color:var(--white);"><i data-lucide="terminal" class="lucide-sm"></i> System Logs</span>
+        </div>
+        <div style="flex:1; background:var(--bg); padding:16px; font-family:monospace; font-size:11px; overflow-y:auto; color:var(--text2); display:flex; flex-direction:column; gap:6px;" id="aegis-logs-body">
+          <div style="color:var(--neon3);">[BOOT] Aegis telemetry receiver online.</div>
+          <div style="color:var(--text3);">[SYSTEM] Awaiting uplink from Executor...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 <div class="page" id="page-social">
   <div class="container" style="padding-top:24px; max-width:1000px">
     <div style="text-align:center; margin-bottom:32px">
