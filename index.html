@@ -1368,7 +1368,18 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
         </button>
       </div>
     </div>
-
+    <div class="term-card" style="height: 500px; display:flex; flex-direction:column;">
+    <div class="term-tabs" style="padding: 14px 16px;">
+        <span style="font-weight:700; color:var(--white);"><i data-lucide="line-chart" class="lucide-sm"></i> Market Chart</span>
+    </div>
+    <div style="flex:1; background:#000;" id="tradingview-wrapper">
+        <iframe 
+            id="dexscreener-embed"
+            src="https://dexscreener.com/solana/8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump?embed=1&theme=dark&trades=0&info=0"
+            style="width:100%; height:100%; border:none;">
+        </iframe>
+    </div>
+</div>
     <div class="metrics-bar" style="border-radius:12px; overflow:hidden; grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
       <div class="metric-card"><div class="metric-value" id="aegis-cash">0.00 SOL</div><div class="metric-label">Available Ammo</div></div>
       <div class="metric-card"><div class="metric-value green" id="aegis-pnl">+$0.00</div><div class="metric-label">Unrealized PnL</div></div>
@@ -1962,6 +1973,72 @@ window.initMiniCharts = function() {
         series.setData(data);
         chart.timeScale().fitContent();
     });
+};
+
+// ============================================================
+// AEGIS AUTO-PILOT: SNAPS CHART TO BOT'S CURRENT TARGET
+// ============================================================
+
+// 🚨 PASTE YOUR NGROK URL HERE:
+window.AEGIS_NGROK_URL = "https://purist-hummus-domelike.ngrok-free.dev";
+
+window.lastAutoTrackedMint = null;
+
+window.startAegisAutoPilot = function() {
+    console.log("🛡️ Aegis Auto-Pilot: ONLINE. Watching bot crosshairs...");
+    
+    setInterval(async () => {
+        try {
+            // 1. Fetch the bot's current watchlist from your Ngrok URL
+            const res = await fetch(`${window.AEGIS_NGROK_URL}/aegis-watchlist`);
+            const data = await res.json();
+            
+            if (data.success && data.watchlist.length > 0) {
+                // Get the newest token added to the bot's stalking list
+                const latestTarget = data.watchlist.sort((a, b) => b.addedAt - a.addedAt)[0];
+                const targetMint = latestTarget.mint;
+
+                // 2. Only reload the iframe if the bot has switched targets
+                if (targetMint !== window.lastAutoTrackedMint) {
+                    console.log(`🎯 Bot Stalking New Target: ${targetMint}`);
+                    
+                    const embed = document.getElementById('dexscreener-embed');
+                    if (embed) {
+                        embed.src = `https://dexscreener.com/solana/${targetMint}?embed=1&theme=dark&trades=0&info=0`;
+                        window.lastAutoTrackedMint = targetMint;
+                        window.showToast(`🚨 BOT TARGET DETECTED: ${targetMint.slice(0,6)}`, "success");
+                    }
+                }
+                
+                // 3. Update the "Watchlist" table in the UI
+                window.updateAegisWatchlistUI(data.watchlist);
+            }
+        } catch (e) {
+            // Fail silently to keep the loop clean
+        }
+    }, 3000); // Check every 3 seconds
+};
+
+window.updateAegisWatchlistUI = function(list) {
+    const tbody = document.getElementById('aegis-positions-body');
+    if (!tbody) return;
+    
+    let html = '';
+    list.forEach(t => {
+        html += `
+            <tr onclick="window.manualSwitchChart('${t.mint}')" style="cursor:pointer; background:rgba(16,185,129,0.05);">
+                <td style="color:var(--neon3); font-weight:700;">${t.mint.slice(0,8)}</td>
+                <td style="color:var(--text3); font-size:10px;">${t.lastReason}</td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html || '<tr><td colspan="2" style="text-align:center; padding:20px; color:var(--text3);">No active targets</td></tr>';
+};
+
+window.manualSwitchChart = function(mint) {
+    const embed = document.getElementById('dexscreener-embed');
+    embed.src = `https://dexscreener.com/solana/${mint}?embed=1&theme=dark&trades=0&info=0`;
+    window.lastAutoTrackedMint = mint; // Prevent auto-pilot from switching it back immediately
 };
 
 // ============================================================
@@ -3839,7 +3916,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.renderTerminalFeed('hot');
   window.initStatusBar();
   window.initAds();
-
+  window.startAegisAutoPilot();
   window.startPlatformCounters();
 
   if (window.lucide) window.lucide.createIcons();
