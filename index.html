@@ -1374,8 +1374,8 @@ body { padding-bottom: 32px; /* Prevents the bar from covering content */ }
     </div>
     <div style="flex:1; background:#000;" id="tradingview-wrapper">
         <iframe 
-            id="dexscreener-embed"
-            src="https://dexscreener.com/solana/8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump?embed=1&theme=dark&trades=0&info=0"
+            id="chart-embed"
+            src="https://birdeye.so/tv-widget/8sLbNZoA1cfnvEZZR5XyoG4B4ofB7sD6MXXhFkZzpump?chain=solana&viewMode=pair&chartInterval=1&chartType=CANDLE&theme=dark"
             style="width:100%; height:100%; border:none;">
         </iframe>
     </div>
@@ -2002,9 +2002,9 @@ window.startAegisAutoPilot = function() {
                 if (targetMint !== window.lastAutoTrackedMint) {
                     console.log(`🎯 Bot Stalking New Target: ${targetMint}`);
                     
-                    const embed = document.getElementById('dexscreener-embed');
+                    const embed = document.getElementById('chart-embed');
                     if (embed) {
-                        embed.src = `https://dexscreener.com/solana/${targetMint}?embed=1&theme=dark&trades=0&info=0`;
+                        embed.src = `https://birdeye.so/tv-widget/${targetMint}?chain=solana&viewMode=pair&chartInterval=1&chartType=CANDLE&theme=dark`;
                         window.lastAutoTrackedMint = targetMint;
                         window.showToast(`🚨 BOT TARGET DETECTED: ${targetMint.slice(0,6)}`, "success");
                     }
@@ -2036,8 +2036,8 @@ window.updateAegisWatchlistUI = function(list) {
 };
 
 window.manualSwitchChart = function(mint) {
-    const embed = document.getElementById('dexscreener-embed');
-    embed.src = `https://dexscreener.com/solana/${mint}?embed=1&theme=dark&trades=0&info=0`;
+    const embed = document.getElementById('chart-embed');
+    embed.src = `https://birdeye.so/tv-widget/${mint}?chain=solana&viewMode=pair&chartInterval=1&chartType=CANDLE&theme=dark`;
     window.lastAutoTrackedMint = mint; // Prevent auto-pilot from switching it back immediately
 };
 
